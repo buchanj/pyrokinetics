@@ -1,14 +1,15 @@
 # Add routines for post-analysis. 
 
-import pyroscan
+from .pyroscan import PyroScan, set_in_dict, get_from_dict
 import os
 import multiprocessing
 import time
+import numpy as np
 
-class PyroLHS(PyroScan):
+class PyroLHD(PyroScan):
     """
     A PyroScan derived class for creating and running 
-    Latin Hypercube Scans.
+    Latin Hypercube Designs.
     """
 
     def get_parameter_ranges(self):
@@ -104,7 +105,6 @@ class PyroLHS(PyroScan):
         """
 
         command = 'docker run -v ' + run_directory + ':/tmp/work_dir '+ image_name
-
         print('Submitting container in directory ' + run_directory)
         os.system(command)
  
@@ -135,6 +135,7 @@ class PyroLHS(PyroScan):
                         active_containers < max_containers ):
                         
                         self.submit_container(image_name,run_directory)
+                        break
                         
                     else:
                         

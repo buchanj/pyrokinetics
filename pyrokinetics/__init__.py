@@ -27,3 +27,4 @@ __version__ = "0.0.0"
 
 from .pyro import Pyro
 from .pyroscan import PyroScan
+from .pyroscan_LHD import PyroLHD
