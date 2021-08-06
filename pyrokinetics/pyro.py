@@ -42,9 +42,6 @@ class Pyro:
         self.file_name = self.gk_file
         self.run_directory = '.'
 
-        self.file_name = self.gk_file
-        self.run_directory = '.'
-
         self.local_geometry_type = local_geometry
         self.local_geometry = self.local_geometry_type
         self.linear = linear
