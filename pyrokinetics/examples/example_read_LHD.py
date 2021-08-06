@@ -25,15 +25,10 @@ pyro.write_gk_file(file_name='test_jetto.gs2', template_file='step.in')
 
 # Use existing parameter
 param_1 = 'ky'
-values_1 = np.arange(0.1, 0.3, 0.1)
-
-# Add new parameter to scan through
-param_2 = 'my_electron_gradient'
-values_2 = np.arange(0.0, 1.5, 0.5)
+values_1 = np.arange(0.5, 0.6, 0.1)
 
 # Dictionary of param and values
-param_dict = {param_1: values_1,
-              param_2: values_2}
+param_dict = {param_1: values_1}
 
 # Create PyroScan object
 pyro_scan = PyroLHD(pyro,
@@ -41,14 +36,21 @@ pyro_scan = PyroLHD(pyro,
                     value_fmt='.3f',
                     value_separator='_',
                     parameter_separator='_',
-                    file_name='mygs2.in'
+                    file_name='step.in'
 )
 
-pyro_scan.add_parameter_key(param_2, 'local_species', ['electron', 'a_lt'])
-
-pyro_scan.write(npoints=10, directory='test_GS2_LHD')
+#pyro_scan.write(npoints=3, directory='test_output')
 
 image_name     = 'gs2_local'
 max_containers = 10 
 
 #pyro_scan.run_docker_local(image_name,max_containers)
+
+pyro_scan.latin_hypercube_n = 3
+pyro_scan.run_directory = './test_output/'
+
+print('Collating LHD results')
+pyro_scan.collate_results()
+
+print('Creating output csv')
+pyro_scan.create_csv()

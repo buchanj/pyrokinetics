@@ -205,7 +205,7 @@ class PyroLHD(PyroScan):
         if self.LHD_pyro_objects is None:
             self.collate_results()
 
-        input_names  = self.param_dict.keys()
+        input_names  = list(self.param_dict.keys())
         output_names = ['mode_frequency','growth_rate']
 
         inputs  = []
