@@ -125,7 +125,6 @@ class PyroLHD(PyroScan):
             print('Run directory is unset, assuming pwd.')
             self.run_directory = '.'
         
- 
     def run_docker_local(self,image_name,max_containers):
 
         """ 
@@ -196,13 +195,65 @@ class PyroLHD(PyroScan):
             # Add this pyro object to list
             self.LHD_pyro_objects.append(pyro)
 
+    def get_parameters_and_targets(self):
+        """
+        Returns an array of the varied input parameter and output values (frequency and growth rate)
+        for the stored pyro objects created by the Latin Hypercube scan.
+        """
+        
+        # Check results information is stored
+        if self.LHD_pyro_objects is None:
+            self.collate_results()
+
+        input_names  = self.param_dict.keys()
+        output_names = ['mode_frequency','growth_rate']
+
+        inputs  = []
+        outputs = []
+
+        # Iterate through all runs and recover output
+        for pyro in self.LHD_pyro_objects:
+
+            # Input data for this run
+            inputs_ = []
+
+            # Get varied parameter data
+            for param in self.param_dict.keys():
+
+                # Get attribute and keys where param is stored
+                attr_name, key_to_param, = self.pyro_keys[param]
+
+                # Get dictionary storing the parameter
+                param_dict = getattr(pyro, attr_name)
+
+                # Get the required value given the dictionary and location of parameter
+                value = get_from_dict(param_dict, key_to_param)
+
+                inputs_.append(value)
+
+            # Get frequency and growth rate
+            output_data = pyro.gk_output.data
+
+            frequency   = output_data['mode_frequency']
+            growth_rate = output_data['growth_rate']
+
+            # FIXME - probably want some final time averaging here!
+            outputs_ = []
+            outputs_.append( np.real( frequency.isel(  time=-1).data[0] ) )
+            outputs_.append( np.real( growth_rate.isel(time=-1).data[0] ) )
+
+            inputs.append( inputs_ )
+            outputs.append( outputs_ )
+
+        return input_names, output_names, inputs, outputs
+
     def create_csv(self):
         """
         Creates a CSV file containing the varied parameter data and resulting growth rates
         """
 
-        # Check settings
-        self.check_settings()
+        # Get data
+        input_names, output_names, inputs, outputs = self.get_parameters_and_targets()
 
         with open( self.run_directory + os.sep + 'LHD.csv', 'w' ) as csvfile:
 
@@ -210,45 +261,11 @@ class PyroLHD(PyroScan):
             csvwriter = csv.writer(csvfile, delimiter=',')
 
             # Create a header line containing the varied parameters and growth rates
-            headers = []
-            for param in self.param_dict.keys():
-                headers.append(param)
-
-            headers.append('frequency')
-            headers.append('growth rate')
+            headers = input_names + output_names
             csvwriter.writerow(headers)
 
             # Iterate through all runs and recover output
-            for run in range(self.latin_hypercube_n):
-
-                # Get pyro object foor this iteration
-                pyro = self.LHD_pyro_objects[run]
-
-                # Array of values to pass to csv file
-                data = []
+            for run in range(len(inputs)):
                 
-                # Get varied parameter data
-                for param in self.param_dict.keys():
-
-                    # Get attribute and keys where param is stored
-                    attr_name, key_to_param, = self.pyro_keys[param]
-
-                    # Get dictionary storing the parameter
-                    param_dict = getattr(pyro, attr_name)
-
-                    # Get the required value given the dictionary and location of parameter
-                    value = get_from_dict(param_dict, key_to_param)
-
-                    data.append(value)
-
-                # Get frequency and growth rate
-                output_data = pyro.gk_output.data
-
-                frequency   = output_data['mode_frequency']
-                growth_rate = output_data['growth_rate']
-
-                # FIXME - probably want some final time averaging here!
-                data.append( np.real( frequency.isel(  time=-1).data[0] ) )
-                data.append( np.real( growth_rate.isel(time=-1).data[0] ) )
-
+                data = inputs[run] + outputs[run]
                 csvwriter.writerow(data)

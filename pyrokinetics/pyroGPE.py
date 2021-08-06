@@ -9,41 +9,56 @@ import scipy
 import csv
 import mogp_emulator as mogp
 
-# Note move csv functions into separate class which pyroscan_LHD and this use - functionality should be together. 
-# Likewise make a get_data function for LHD or something which returns varied parameter values and outputs
-
 class PyroGPE:
     """
     A class for generating Gaussian Process Emulators based on
     csv files containing data or pyroscan_LHD objects
     """
 
-    def save(self):
+    def save_gpes(self):
         """
         Save this GPE.
         """
 
-    def load(self):
+    def load_gpes(self):
         """
         Load an already trained GPE.
         """
 
-    def build_from_csv(self,csvfile,kernel='Matern52',nugget=1.0e-8,n_outputs=2):
+    def train_gpes(self,kernel='Matern52',nugget=1.0e-8):
+        """
+        Builds Gaussian Process Emulators for frequency and
+        growth rate based on stored data.
+        """
+
+        if kernel not in ['Matern52','SquaredExponential']:
+            raise Exception(f'Invalid kernel {kernel} selected.')
+
+        self.kernel = kernel
+        self.nugget = nugget
+
+        # Need to reshape target data into separate
+        # frequency and growth rate arrays
+
+        targets = np.array(self.target_values)
+        targets = targets.transpose()
+
+        # Train Gaussian Processes
+        self.frequency_GPE  = mogp.fit_GP_MAP( self.parameter_values, targets[0], kernel=self.kernel, nugget=self.nugget)
+        self.growthrate_GPE = mogp.fit_GP_MAP( self.parameter_values, targets[1], kernel=self.kernel, nugget=self.nugget)
+
+    def load_data_from_csv(self,csvfile,n_outputs=2):
         """
         Build a Gaussian Process using a csv file containing input parameters
         and growth rate data. By default the last two entries are assumed 
         to be frequency and growth rate respectively.
         """
-        
-        if kernel not in ['Matern52','SquaredExponential']:
-            raise Exception(f'Invalid kernel {kernel} selected.')
 
-        self.csv    = csv
-        self.kernel = kernel
-        self.nugget = nugget
+        # Store file name
+        self.csv = csvfile
 
-        # Parameter values at training locations and target values at
-        # these locations in parameter space
+        # Parameter values at training locations and target 
+        # values at these locations in parameter space
 
         self.parameter_values  = []
         self.target_values     = []
@@ -56,7 +71,7 @@ class PyroGPE:
             headers = next(csvreader)
             
             if len(headers) < n_outputs+1:
-                raise Exception(f'CSV file contains fewer than {n_outputs} entries per row.')
+                raise Exception(f'CSV file contains fewer than {n_outputs+1} entries per row.')
 
             self.parameter_names = headers[:-1*n_outputs]
             self.output_names    = headers[-1*n_outputs:]
@@ -65,66 +80,19 @@ class PyroGPE:
                 self.parameter_values.append(row[:-1*n_outputs])
                 self.target_values.append(row[-1*n_outputs:])
 
-        # Train Gaussian Process 
-        self.GPE = mogp.fit_GP_MAP( self.parameter_values, self.target_values, kernel=self.kernel, nugget=self.nugget)
-
-    def build_from_lhd(self,lhd,,kernel='Matern52',nugget=1.0e-8,n_outputs=2):
+    def load_data_from_lhd(self,lhd):
         """
         Build a Gaussian Process using an existing pyroscan_LHD object containing
         a set of pyro objects.
         """
-        
-        if kernel not in ['Matern52','SquaredExponential']:
-            raise Exception(f'Invalid kernel {kernel} selected.')
 
-        self.csv    = csv
-        self.kernel = kernel
-        self.nugget = nugget
+        # Get data
+        input_names, output_names, inputs, outputs = lhd.get_parameters_and_targets()
 
-        # Parameter values at training locations and target values at
-        # these locations in parameter space
-
-        self.parameter_names   = lhd.param_dict.keys()
-        self.output_names      = [ 'mode_frequency', 'growth_rate' ]
-
-        self.parameter_values  = []
-        self.target_values     = []
-
-        # Loop over pyro objects stored in LHD design
-        for pyro in lhd.LHD_pyro_objects:
-
-            parameter_values = []
-
-            # Get varied parameter data
-            for param in lhd.param_dict.keys():
-
-                # Get attribute and keys where param is stored
-                attr_name, key_to_param, = lhd.pyro_keys[param]
-            
-                # Get dictionary storing the parameter
-                param_dict = getattr(pyro, attr_name)
-                
-                # Get the required value given the dictionary and location of parameter
-                value = get_from_dict(param_dict, key_to_param)
-            
-                parameter_values.append(value)
-                
-            self.parameter_values.append( parameter_values )
-
-            # Get frequency and growth rate
-            output_data = pyro.gk_output.data
-
-            frequency   = output_data['mode_frequency']
-            growth_rate = output_data['growth_rate']
-            
-            outputs = []
-            outputs.append( np.real( frequency.isel(  time=-1).data[0] ) )
-            outputs.append( np.real( growth_rate.isel(time=-1).data[0] ) )
-
-            self.target_values.append( outputs )
-
-        # Train Gaussian Process 
-        self.GPE = mogp.fit_GP_MAP( self.parameter_values, self.target_values, kernel=self.kernel, nugget=self.nugget)
+        self.parameter_names   = input_names
+        self.output_names      = output_names
+        self.parameter_values  = inputs
+        self.target_values     = outputs
 
     def validate_from_lhd(self,lhd):
         """
