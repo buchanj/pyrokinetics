@@ -1,10 +1,14 @@
-# Add routines for post-analysis. 
+# Need to write a run script based on example scan and example analysis
+# This should use this to submit a batched LHD scan then once that has
+# finished loop over the results directories and aggregate the results.  
 
+from .pyro import Pyro
 from .pyroscan import PyroScan, set_in_dict, get_from_dict
 import os
 import multiprocessing
 import time
 import numpy as np
+import csv
 
 class PyroLHD(PyroScan):
     """
@@ -87,7 +91,6 @@ class PyroLHD(PyroScan):
 
             self.pyro.write_gk_file(self.file_name, directory=run_directory)
 
-
     def count_active_containers(self,image_name):
         """
         Counts the number of currently running containers of the given image
@@ -107,6 +110,21 @@ class PyroLHD(PyroScan):
         command = 'docker run -v ' + run_directory + ':/tmp/work_dir '+ image_name
         print('Submitting container in directory ' + run_directory)
         os.system(command)
+
+    def check_settings(self):
+        """
+        Checks data needed for post-processing steps is available.
+        """
+
+        # Check LHD size is set
+        if self.latin_hypercube_n is None:
+            raise Exception('No LHD information available. Aborting.')
+
+        # Check run directory
+        if self.run_directory is None:
+            print('Run directory is unset, assuming pwd.')
+            self.run_directory = '.'
+        
  
     def run_docker_local(self,image_name,max_containers):
 
@@ -114,6 +132,9 @@ class PyroLHD(PyroScan):
         Submits a set of containerised GS2 runs generated according to a Latin Hypercube Design.
         Currently assumes each run is a single core run.
         """
+
+        # Check settings
+        self.check_settings() 
 
         # Get total number of available processors
         total_procs = multiprocessing.cpu_count()
@@ -145,3 +166,89 @@ class PyroLHD(PyroScan):
                     
                     print('Error submitting container in directory '+run_directory)
                     break
+    
+    def collate_results(self):
+        """
+        Reads data from completed LHD runs into a set of pyro objects.
+        """
+
+        # Check settings
+        self.check_settings()
+
+        self.LHD_pyro_objects = []
+
+        # Iterate through all runs and recover output
+        for run in range(self.latin_hypercube_n):
+
+            # Directory name for this particular run
+            run_directory =  self.run_directory + os.sep + 'LHS_iteration_'+str(run) + os.sep
+            
+            # Input file name
+            run_input_file = os.path.join(run_directory, self.file_name)
+            print('Reading '+run_input_file+' into Pyro object')
+
+            # Read input file into a Pyro object
+            pyro = Pyro(gk_file=run_input_file, gk_type='GS2')
+
+            # Read output data
+            pyro.load_gk_output()
+
+            # Add this pyro object to list
+            self.LHD_pyro_objects.append(pyro)
+
+    def create_csv(self):
+        """
+        Creates a CSV file containing the varied parameter data and resulting growth rates
+        """
+
+        # Check settings
+        self.check_settings()
+
+        with open( self.run_directory + os.sep + 'LHD.csv', 'w' ) as csvfile:
+
+            # CSV writer
+            csvwriter = csv.writer(csvfile, delimiter=',')
+
+            # Create a header line containing the varied parameters and growth rates
+            headers = []
+            for param in self.param_dict.keys():
+                headers.append(param)
+
+            headers.append('frequency')
+            headers.append('growth rate')
+            csvwriter.writerow(headers)
+
+            # Iterate through all runs and recover output
+            for run in range(self.latin_hypercube_n):
+
+                # Get pyro object foor this iteration
+                pyro = self.LHD_pyro_objects[run]
+
+                # Array of values to pass to csv file
+                data = []
+                
+                # Get varied parameter data
+                for param in self.param_dict.keys():
+
+                    # Get attribute and keys where param is stored
+                    attr_name, key_to_param, = self.pyro_keys[param]
+
+                    # Get dictionary storing the parameter
+                    param_dict = getattr(pyro, attr_name)
+
+                    # Get the required value given the dictionary and location of parameter
+                    value = get_from_dict(param_dict, key_to_param)
+
+                    data.append(value)
+
+                # Get frequency and growth rate
+                output_data = pyro.gk_output.data
+
+                frequency   = output_data['mode_frequency']
+                growth_rate = output_data['growth_rate']
+
+                # FIXME - probably want some final time averaging here!
+                data.append( np.real( frequency.isel(  time=-1).data[0] ) )
+                data.append( np.real( growth_rate.isel(time=-1).data[0] ) )
+
+                csvwriter.writerow(data)
