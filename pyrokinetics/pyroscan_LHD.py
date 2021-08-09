@@ -205,11 +205,11 @@ class PyroLHD(PyroScan):
         if self.LHD_pyro_objects is None:
             self.collate_results()
 
-        input_names  = list(self.param_dict.keys())
-        output_names = ['mode_frequency','growth_rate']
+        self.lhd_input_names  = list(self.param_dict.keys())
+        self.lhd_output_names = ['mode_frequency','growth_rate']
 
-        inputs  = []
-        outputs = []
+        self.lhd_inputs  = []
+        self.lhd_outputs = []
 
         # Iterate through all runs and recover output
         for pyro in self.LHD_pyro_objects:
@@ -242,10 +242,11 @@ class PyroLHD(PyroScan):
             outputs_.append( np.real( frequency.isel(  time=-1).data[0] ) )
             outputs_.append( np.real( growth_rate.isel(time=-1).data[0] ) )
 
-            inputs.append( inputs_ )
-            outputs.append( outputs_ )
+            self.lhd_inputs.append( inputs_ )
+            self.lhd_outputs.append( outputs_ )
 
-        return input_names, output_names, inputs, outputs
+        self.lhd_inputs  = np.array( self.lhd_inputs )
+        self.lhd_outputs = np.array( self.lhd_outputs )
 
     def create_csv(self):
         """

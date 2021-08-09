@@ -9,6 +9,8 @@ import scipy
 import csv
 import mogp_emulator as mogp
 
+# FIXME - Convert to using Xarrays. 
+
 class PyroGPE:
     """
     A class for generating Gaussian Process Emulators based on
@@ -30,6 +32,9 @@ class PyroGPE:
         Builds Gaussian Process Emulators for frequency and
         growth rate based on stored data.
         """
+
+        if self.parameter_values is None or self.target_values is None:
+            raise Exception("No training data availble in GPE class.")
 
         if kernel not in ['Matern52','SquaredExponential']:
             raise Exception(f'Invalid kernel {kernel} selected.')
@@ -99,17 +104,79 @@ class PyroGPE:
         Perform a validation study using a Latin Hypercube of test data.
         """
 
+        if self.frequency_GPE is None or self.growthrate_GPE is None:
+            raise Exception("Cannot perform validation as GPE is not trained.")
+
+        if lhd.lhd_inputs is None:
+            lhd.get_parameters_and_targets()
+
+        freq, gamma, freq_unc, gamma_unc = self.evaluate(lhd.lhd_inputs,uncertainty=True)
+
+        # Calculate Z values = (value - mean)/sd
+        frequency_zs = np.zeros(lhd.latin_hypercube_n)
+        gamma_zs     = np.zeros(lhd.latin_hypercube_n)
+
+        frequency_rms_error = 0.0
+        gamma_rms_error     = 0.0
+
+        for i in range( lhd.latin_hypercube_n ):
+            
+            
+            frequency_target = lhd.lhd_outputs[i,0]
+            gamma_target     = lhd.lhd_outputs[i,1]
+
+            frequency_prediction = freq[i]
+            gamma_prediction     = gamma[i]
+
+            frequency_uncertainty = freq_unc[i]
+            gamma_uncertainty     = gamma_unc[i]
+
+            frequency_zs[i] = ( frequency_prediction - frequency_target ) / frequency_uncertainty 
+            gamma_zs[i]     = (     gamma_prediction -     gamma_target ) / gamma_uncertainty 
+
+            frequency_rms_error = frequency_rms_error + ( frequency_prediction - frequency_target )**2.0
+            gamma_rms_error     = gamma_rms_error     + (     gamma_prediction -     gamma_target )**2.0
+
+        frequency_rms_error = frequency_rms_error**0.5 / lhd.latin_hypercube_n
+        gamma_rms_error     =     gamma_rms_error**0.5 / lhd.latin_hypercube_n
+
+        # Scale by range of data 
+
+        # Get minima and maxima of frequency and growth rate over test data
+        minima = np.amin( lhd.lhd_outputs, 0 )
+        maxima = np.amax( lhd.lhd_outputs, 0 )
+
+        frequency_rms_error = frequency_rms_error / ( maxima[0] - minima[0] )
+        gamma_rms_error     =     gamma_rms_error / ( maxima[1] - minima[1] )
+
     def validate_from_csv(self,csv):
         """
         Perform a validation study using a csv file containing test data.
         """
 
+        # Read into LHD and then call above. 
+
     def leave_one_out_cross_validate(self):
         """
         Perform a leave one out cross validation study
         """
+        # To Do.
         
-    def evaluate(self,inputs,variance=False):
+    def evaluate(self,inputs,uncertainty=False):
         """
         Evaluate the GPE at a given input location.
+        Input is an Npoints * Ninputs array of parameter values, outputs
+        are Npoints sized arrays of predictions and uncertainties.
         """
+
+        try:
+            
+            freq, freq_unc   = self.frequency_GPE.predict(inputs,unc=uncertainty)
+            gamma, gamma_unc = self.growthrate_GPE(inputs,unc=uncertainty)
+
+        else:
+
+            raise Exception("Error evaluating Gaussian Process Emulators")
+
+        return freq, gamma, freq_unc, gamma_unc
+        
