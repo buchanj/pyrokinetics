@@ -14,6 +14,14 @@ class PyroLHD(PyroScan):
     """
     A PyroScan derived class for creating and running 
     Latin Hypercube Designs.
+
+    Member data
+    lhs_param_dict    : Dictionary of parameters and ranges used to generate LHD   [get_parameter_ranges]
+    run_directory     : Top directory to add individual run directories to         [write]
+    latin_hypercube_n : Number of points to generate                               [write]
+    file_name         : Name of input file to write                                [write]
+    LHD_pyro_objects  : A collection of pyro objects for each run with output data [collate_results]
+
     """
 
     def get_parameter_ranges(self):
@@ -35,20 +43,18 @@ class PyroLHD(PyroScan):
 
             counter = counter + 1
 
-    def write(self, npoints=100, file_name=None, directory='.'):
+    def write(self, npoints=100, file_name='gs2.in', directory='.'):
         """
         Creates and writes GK input files for parameters in a maximin Latin Hypercube of size npoints
         """
 
         from pyDOE import lhs
 
+        self.file_name     = file_name
         self.run_directory = directory
 
         print(f'Creating a Latin Hypercube of runs with {npoints} points')
         self.latin_hypercube_n = npoints
-
-        if file_name is not None:
-            self.file_name = file_name
 
         # Check if parameters are in viable options
         for key in self.param_dict.keys():
@@ -248,13 +254,15 @@ class PyroLHD(PyroScan):
         self.lhd_inputs  = np.array( self.lhd_inputs )
         self.lhd_outputs = np.array( self.lhd_outputs )
 
+        return self.lhd_input_names, self.lhd_inputs, self.lhd_output_names, self.lhd_outputs
+
     def create_csv(self):
         """
         Creates a CSV file containing the varied parameter data and resulting growth rates
         """
 
         # Get data
-        input_names, output_names, inputs, outputs = self.get_parameters_and_targets()
+        input_names, inputs, output_names, outputs = self.get_parameters_and_targets()
 
         with open( self.run_directory + os.sep + 'LHD.csv', 'w' ) as csvfile:
 
@@ -268,5 +276,5 @@ class PyroLHD(PyroScan):
             # Iterate through all runs and recover output
             for run in range(len(inputs)):
                 
-                data = inputs[run] + outputs[run]
+                data = np.array( list(inputs[run]) + list(outputs[run]) )
                 csvwriter.writerow(data)
