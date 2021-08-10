@@ -123,7 +123,7 @@ class PyroLHD(PyroScan):
 
         abs_run_directory = self.get_absolute_path(run_directory)
 
-        command = 'docker run -v -d ' + abs_run_directory + ':/tmp/work_dir '+ image_name
+        command = 'docker run -v ' + abs_run_directory + ':/tmp/work_dir -d '+ image_name
         print('Submitting container in directory ' + abs_run_directory)
         os.system(command)
         print('Submitted')
