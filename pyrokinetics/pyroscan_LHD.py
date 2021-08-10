@@ -103,7 +103,7 @@ class PyroLHD(PyroScan):
         """
 
         command = 'docker ps | grep ' + image_name + ' | wc -l'
-        count = os.system(command)
+        count = int( os.popen(command).read() )
         
         return count
 
