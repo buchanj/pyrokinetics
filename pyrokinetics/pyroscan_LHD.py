@@ -166,7 +166,8 @@ class PyroLHD(PyroScan):
                 try:
 
                     active_containers = self.count_active_containers(image_name)
-                    
+                    print( str(active_containers) + ' active containers' )
+
                     # Check if there are processors available for new container
                     if( active_containers < total_procs and
                         active_containers < max_containers ):
