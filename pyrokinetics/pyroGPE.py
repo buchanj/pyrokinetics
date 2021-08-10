@@ -58,7 +58,7 @@ class PyroGPE:
             freq, freq_unc   = frequency_GPE.predict(inputs,unc=uncertainty)
             gamma, gamma_unc = growthrate_GPE.predict(inputs,unc=uncertainty)
 
-        else:
+        except:
 
             raise Exception("Error evaluating Gaussian Process Emulators")
 
