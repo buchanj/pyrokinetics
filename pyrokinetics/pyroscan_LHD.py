@@ -126,6 +126,7 @@ class PyroLHD(PyroScan):
         command = 'docker run -v ' + abs_run_directory + ':/tmp/work_dir '+ image_name
         print('Submitting container in directory ' + abs_run_directory)
         os.system(command)
+        print('Submitted')
 
     def check_settings(self):
         """
@@ -175,6 +176,7 @@ class PyroLHD(PyroScan):
                         
                     else:
                         
+                        print('Waiting for available cores...')
                         time.sleep(10)
 
                 except:
