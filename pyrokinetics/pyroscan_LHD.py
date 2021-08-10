@@ -107,14 +107,24 @@ class PyroLHD(PyroScan):
         
         return count
 
+    def get_absolute_path(self,run_directory):
+        """
+        Docker won't attach volumes using relative paths so need to convert relative
+        paths to absolute ones before submitting containers.
+        """
+        
+        return os.path.abspath(run_directory)
+
     def submit_container(self,image_name,run_directory):
         """
         Submits a container of the given image name in the specified run directory
         Assumes the container is set up to awaken in /tmp/work_dir as for the VVeb.UQ app
         """
 
-        command = 'docker run -v ' + run_directory + ':/tmp/work_dir '+ image_name
-        print('Submitting container in directory ' + run_directory)
+        abs_run_directory = self.get_absolute_path(run_directory)
+
+        command = 'docker run -v ' + abs_run_directory + ':/tmp/work_dir '+ image_name
+        print('Submitting container in directory ' + abs_run_directory)
         os.system(command)
 
     def check_settings(self):
