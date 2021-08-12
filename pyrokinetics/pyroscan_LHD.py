@@ -43,7 +43,7 @@ class PyroLHD(PyroScan):
 
             counter = counter + 1
 
-    def write(self, npoints=100, file_name='gs2.in', directory='.'):
+    def write(self, npoints=100, file_name='gs2.in', directory='.', template_file=None):
         """
         Creates and writes GK input files for parameters in a maximin Latin Hypercube of size npoints
         """
@@ -95,7 +95,7 @@ class PyroLHD(PyroScan):
 
             run_input_file = os.path.join(run_directory, self.file_name)
 
-            self.pyro.write_gk_file(self.file_name, directory=run_directory)
+            self.pyro.write_gk_file(self.file_name, directory=run_directory, template_file=template_file)
 
     def count_active_containers(self,image_name):
         """

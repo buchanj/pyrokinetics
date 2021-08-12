@@ -53,7 +53,7 @@
 &dist_fn_knobs
     adiabatic_option = 'iphi00=2'
     opt_source = .true.
-    def_parity = .true.
+    def_parity = .false.
     even = .true.
 /
 
@@ -122,7 +122,7 @@
 
 &init_g_knobs
     ginit_option = 'default'
-    chop_side = .false.
+    chop_side = .true.
     phiinit = 1e-05
     restart_dir = 'restart'
 /
