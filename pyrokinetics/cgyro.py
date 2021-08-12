@@ -119,7 +119,7 @@ class CGYRO(GKCode):
             for key, val in pyro_cgyro_miller.items():
                 cgyro_input[val] = miller[key]
 
-            cgyro_input['S_DELTA'] = miller.s_delta * np.sqrt(1 - miller.delta**2)
+            cgyro_input['S_DELTA'] = miller.s_delta * np.sqrt(1 - miller.delta ** 2)
 
         else:
             raise NotImplementedError
@@ -158,7 +158,7 @@ class CGYRO(GKCode):
                 if miller.Bunit is not None:
                     beta = 1.0 / miller.Bunit ** 2
                     beta_prime_scale = - miller.beta_prime / (
-                                local_species.a_lp * beta * (miller.Bunit / miller.B0) ** 2)
+                            local_species.a_lp * beta * (miller.Bunit / miller.B0) ** 2)
                 else:
                     beta = 0.0
                     beta_prime_scale = 1.0
@@ -488,6 +488,7 @@ class CGYRO(GKCode):
             self.load_eigenfunctions(pyro)
 
     def load_grids(self, pyro):
+
         """
         Loads CGYRO grids to GKOutput
 
@@ -506,6 +507,7 @@ class CGYRO(GKCode):
         time = np.loadtxt(time_file)[:, 0]
 
         gk_output.time = time
+
         gk_output.ntime = len(time)
 
         eq_file = os.path.join(run_directory, 'out.cgyro.equilibrium')
@@ -519,22 +521,23 @@ class CGYRO(GKCode):
         grid_data = np.loadtxt(grids_file)
 
         nky = int(grid_data[0])
+
         nspecies = int(grid_data[1])
         nfield = int(grid_data[2])
         nkx = int(grid_data[3])
-        ntheta = int(grid_data[4])
+        ntheta_grid = int(grid_data[4])
         nenergy = int(grid_data[5])
         npitch = int(grid_data[6])
         box_size = int(grid_data[7])
         length_x = grid_data[8]
         ntheta_plot = int(grid_data[10])
 
-        ntheta_ballooning = ntheta * int(nkx / box_size)
+        ntheta_ballooning = ntheta_grid * int(nkx / box_size)
 
         starting_point = 11 + nkx
 
-        theta = grid_data[starting_point:starting_point + ntheta]
-        starting_point += ntheta
+        theta_grid = grid_data[starting_point:starting_point + ntheta_grid]
+        starting_point += ntheta_grid
 
         energy = grid_data[starting_point:starting_point + nenergy]
         starting_point += nenergy
@@ -547,25 +550,25 @@ class CGYRO(GKCode):
 
         ky = grid_data[starting_point:starting_point + nky]
 
-        # Output data actually given on theta_plot grid
-        stride = ntheta // ntheta_plot
-
         # Convert to ballooning co-ordinate so only 1 kx
         if not pyro.numerics.nonlinear:
-            ntheta_plot = ntheta_plot * nkx
-            theta_plot = np.empty(ntheta_plot)
 
-            for i in range(ntheta_plot):
-                theta_plot[i] = theta_ballooning[stride * i]
+            theta = theta_ballooning
+            ntheta = ntheta_ballooning
 
             kx = [0.0]
             nkx = 1
 
         else:
+            # Output data actually given on theta_plot grid
+            stride = ntheta_grid // ntheta_plot
 
-            for i in range(ntheta_plot):
-                theta_plot = np.empty(ntheta_plot)
-                theta_plot[i] = theta[stride * i]
+            ntheta = ntheta_plot
+            theta = np.empty(ntheta_plot)
+
+            # Calculate sub-sampled theta grid theta grid
+            for i in range(ntheta):
+                theta[i] = theta_grid[stride * i]
 
             kx = 2 * pi * np.linspace(-int(nkx / 2), int(nkx / 2) - 1, nkx) / length_x
 
@@ -579,18 +582,18 @@ class CGYRO(GKCode):
         gk_output.nkx = nkx
         gk_output.nenergy = nenergy
         gk_output.npitch = npitch
-        gk_output.ntheta = ntheta_plot
-        gk_output.ntheta_ballooning = ntheta_ballooning
+        gk_output.ntheta = ntheta
         gk_output.nspecies = nspecies
         gk_output.nfield = nfield
+        gk_output.ntheta_plot = ntheta_plot
+        gk_output.ntheta_grid = ntheta_grid
 
         # Grid values
         gk_output.ky = ky
         gk_output.kx = kx
         gk_output.energy = energy
         gk_output.pitch = pitch
-        gk_output.theta = theta_plot
-        gk_output.theta_ballooning = theta_ballooning
+        gk_output.theta = theta
         gk_output.rho_star = rho_star
 
         # Store grid data as xarray DataSet
@@ -600,8 +603,7 @@ class CGYRO(GKCode):
                                 "species": species,
                                 "kx": kx,
                                 "ky": ky,
-                                "theta": theta_plot,
-                                "theta_ballooning": theta_ballooning
+                                "theta": theta,
                                 }
                         )
 
@@ -625,7 +627,14 @@ class CGYRO(GKCode):
 
         field_appendices = ['phi', 'apar', 'bpar']
 
-        # Loop through all fields and add field in it exists
+        # Linear and theta_plot != theta_grid load field structure from eigenfunction file
+        if not pyro.numerics.nonlinear and gk_output.ntheta_plot != gk_output.ntheta_grid:
+            self.load_eigenfunctions(pyro, no_fields=True)
+
+            for ifield in range(gk_output.nfield):
+                fields[ifield, :, 0, 0, :] = data['eigenfunctions'].isel(field=ifield)
+
+        # Loop through all fields and add field in if it exists
         for ifield, field_appendix in enumerate(field_appendices):
 
             field_file = f"{base_file}{field_appendix}"
@@ -634,37 +643,48 @@ class CGYRO(GKCode):
                 raw_field = self.read_binary_file(field_file)
                 sliced_field = raw_field[:2 * gk_output.nkx * gk_output.ntheta * gk_output.nky * gk_output.ntime]
 
+                # Load in non-linear field
                 if pyro.numerics.nonlinear:
                     field_data = np.reshape(sliced_field, (2, gk_output.nkx, gk_output.ntheta, gk_output.nky,
                                                            gk_output.ntime), 'F') / gk_output.rho_star
 
                     complex_field = field_data[0, :, :, :, :] + 1j * field_data[1, :, :, :, :]
 
-                # Convert from kx to ballooning space
+                    fields[ifield, :, :, :, :] = np.reshape(complex_field, (gk_output.ntheta, gk_output.nkx,
+                                                                        gk_output.nky, gk_output.ntime))
+                # Linear convert from kx to ballooning space
                 else:
                     nradial = pyro.cgyro_input['N_RADIAL']
 
-                    # Figure about what theta_plot is
-                    ntheta = gk_output.ntheta // nradial
+                    # If theta_plot != theta_grid get amplitude of fields from binary files
+                    if gk_output.ntheta_plot != gk_output.ntheta_grid:
+                        field_amplitude = np.reshape(sliced_field, (2, nradial, gk_output.ntheta_plot, gk_output.nky,
+                                                                    gk_output.ntime), 'F') / gk_output.rho_star
 
-                    field_data = np.reshape(sliced_field, (2, nradial, ntheta, gk_output.nky,
-                                                           gk_output.ntime), 'F') / gk_output.rho_star
+                        middle_kx = int(nradial/2) + 1
+                        field_amplitude = field_amplitude[0, middle_kx, 0, 0, :]
 
-                    complex_field = field_data[0, :, :, :, :] + 1j * field_data[1, :, :, :, :]
+                        fields[ifield, :, 0, 0, :] *= field_amplitude
 
-                    # Poisson Sum
-                    for i_radial in range(nradial):
-                        nx = -nradial // 2 + (i_radial - 1)
-                        complex_field[i_radial, :, :, :] *= np.exp(-2 * pi * 1j * nx * pyro.local_geometry.q)
+                    # If all theta point are there then read in data
+                    else:
+                        field_data = np.reshape(sliced_field, (2, nradial, gk_output.ntheta_plot, gk_output.nky,
+                                                               gk_output.ntime), 'F') / gk_output.rho_star
 
-                fields[ifield, :, :, :, :] = np.reshape(complex_field, (gk_output.ntheta, gk_output.nkx,
+                        complex_field = field_data[0, :, :, :, :] + 1j * field_data[1, :, :, :, :]
+
+                        # Poisson Sum
+                        for i_radial in range(nradial):
+                            nx = -nradial // 2 + (i_radial - 1)
+                            complex_field[i_radial, :, :, :] *= np.exp(-2 * pi * 1j * nx * pyro.local_geometry.q)
+
+                        fields[ifield, :, :, :, :] = np.reshape(complex_field, (gk_output.ntheta, gk_output.nkx,
                                                                         gk_output.nky, gk_output.ntime))
 
             else:
                 if ifield <= pyro.gk_output.nfield - 1:
                     print(f'No field file for {field_appendix}')
                     fields[ifield, :, :, :, :] = None
-
 
         data['fields'] = (('field', 'theta', 'kx', 'ky', 'time'), fields)
 
@@ -724,7 +744,9 @@ class CGYRO(GKCode):
             data['mode_frequency'] = (("ky", "time"), mode_frequency)
             data['eigenvalues'] = (("ky", "time"), eigenvalue)
 
-    def load_eigenfunctions(self, pyro):
+            self.get_growth_rate_tolerance(pyro)
+
+    def load_eigenfunctions(self, pyro, no_fields=False):
 
         """
         Loads eigenfunctions into GKOutput.data Dataset
@@ -733,9 +755,12 @@ class CGYRO(GKCode):
         gk_output = pyro.gk_output
         data = gk_output.data
 
-        no_nan = not np.isnan(data['fields'].data).any()
+        if no_fields:
+            no_nan = False
+        else:
+            no_nan = not np.isnan(data['fields'].data).any()
 
-        if gk_output.ntheta_ballooning == gk_output.ntheta:
+        if gk_output.ntheta_plot == gk_output.ntheta_grid:
             all_ballooning = True
         else:
             all_ballooning = False
@@ -750,7 +775,8 @@ class CGYRO(GKCode):
 
             base_file = os.path.join(run_directory, 'bin.cgyro.')
 
-            eigenfunctions = np.empty((gk_output.nfield, gk_output.ntheta_ballooning, gk_output.ntime), dtype=np.complex)
+            eigenfunctions = np.empty((gk_output.nfield, gk_output.ntheta, gk_output.ntime),
+                                      dtype=np.complex)
 
             field_appendices = ['phi', 'apar', 'bpar']
 
@@ -760,16 +786,17 @@ class CGYRO(GKCode):
                 eigenfunction_file = f"{base_file}{field_appendix}b"
 
                 if os.path.exists(eigenfunction_file):
-                    raw_eigenfunction = self.read_binary_file(eigenfunction_file)[:2 * gk_output.ntheta_ballooning *
+                    raw_eigenfunction = self.read_binary_file(eigenfunction_file)[:2 * gk_output.ntheta *
                                                                                   gk_output.ntime]
 
-                    sliced_eigenfunction = raw_eigenfunction[:2 * gk_output.ntheta_ballooning * gk_output.ntime]
-                    eigenfunction_data = np.reshape(sliced_eigenfunction, (2, gk_output.ntheta_ballooning, gk_output.ntime),
+                    sliced_eigenfunction = raw_eigenfunction[:2 * gk_output.ntheta * gk_output.ntime]
+                    eigenfunction_data = np.reshape(sliced_eigenfunction,
+                                                    (2, gk_output.ntheta, gk_output.ntime),
                                                     'F')
 
                     eigenfunctions[ifield, :, :] = eigenfunction_data[0, :, :] + 1j * eigenfunction_data[1, :, :]
 
-            data['eigenfunctions'] = (("field", "theta_ballooning", "time"), eigenfunctions)
+            data['eigenfunctions'] = (("field", "theta", "time"), eigenfunctions)
 
     def read_binary_file(self, file_name):
         """

@@ -495,7 +495,7 @@ class GS2(GKCode):
 
     def load_grids(self, pyro):
         """
-        Loads CGYRO grids to GKOutput
+        Loads GS2 grids to GKOutput
 
         out.cgyro.grids stores all the grid data in one long 1D array
         Output is in a standardised order
@@ -530,16 +530,18 @@ class GS2(GKCode):
         gk_output.kx = kx
         gk_output.nkx = len(kx)
 
-        nspecies = netcdf_data['nspecies'][:]
+        nspecies = netcdf_data.dimensions['species'].size
         gk_output.nspecies = nspecies
 
         theta = netcdf_data['theta'][:]
         gk_output.theta = theta
         gk_output.ntheta = len(theta)
-        gk_output.theta_ballooning = gk_output.theta
-        gk_output.ntheta_ballooning = gk_output.ntheta
 
-        energy = netcdf_data['egrid'][:]
+        try:
+            energy = netcdf_data['egrid'][:]
+        except IndexError:
+            energy = netcdf_data['energy'][:]
+
         gk_output.energy = energy
         gk_output.nenergy = len(energy)
 
@@ -572,7 +574,6 @@ class GS2(GKCode):
                                 "kx": kx,
                                 "ky": ky,
                                 "theta": theta,
-                                "theta_ballooning": theta
                                 }
                         )
 
