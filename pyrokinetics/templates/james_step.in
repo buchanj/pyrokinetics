@@ -60,7 +60,6 @@
 &fields_knobs
     field_option = 'implicit'
     response_dir = 'response'
-    dump_response = .true.
 /
 
 &knobs
