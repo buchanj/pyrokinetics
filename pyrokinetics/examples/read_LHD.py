@@ -1,4 +1,4 @@
-from pyrokinetics import Pyro, PyroScan, PyroLHD
+from pyrokinetics import Pyro, PyroScan, PyroLHD, PyroGPE
 import os
 import numpy as np
 
@@ -52,3 +52,14 @@ pyro_scan.collate_results()
 
 print('Creating output csv')
 pyro_scan.create_csv()
+
+# Train a GPE using the stored data
+
+pyro_gpe = PyroGPE()
+
+# Load training data from LHD object
+pyro_gpe.load_training_data_from_lhd(pyro_scan)
+
+# Train GPEs based on loaded data
+pyro_gpe.train()
+
