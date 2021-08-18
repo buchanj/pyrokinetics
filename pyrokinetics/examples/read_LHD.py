@@ -58,8 +58,15 @@ pyro_scan.create_csv()
 pyro_gpe = PyroGPE()
 
 # Load training data from LHD object
+print('Reading training data from LHD object')
 pyro_gpe.load_training_data_from_lhd(pyro_scan)
 
 # Train GPEs based on loaded data
+print('Training GPEs')
 pyro_gpe.train()
 
+# Perform leave one out cross validation
+frequency_rms_error, gamma_rms_error, frequency_zs, gamma_zs = pyro_gpe.leave_one_out_cross_validate(self)
+print( 'Frequency RMS error / range : '+str(frequency_rms_error) )
+print()
+print( 'Growth Rate RMS error / range : '+str(gamma_rms_error) )
