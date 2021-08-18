@@ -54,14 +54,16 @@ class PyroGPE:
 
         try:
             
-            freq, freq_unc   = frequency_GPE.predict(inputs,unc=uncertainty)
-            gamma, gamma_unc = growthrate_GPE.predict(inputs,unc=uncertainty)
+            # predict returns tuples of numpy arrays containing predictions, uncertainties and derivatives
+            # If uncertainties is set to zero the second element is None. 
+            freq_data   = frequency_GPE.predict(inputs,unc=uncertainty)
+            gamma_data = growthrate_GPE.predict(inputs,unc=uncertainty)
 
         except:
 
             raise Exception("Error evaluating Gaussian Process Emulators")
 
-        return freq, gamma, freq_unc, gamma_unc
+        return freq_data, gamma_data
 
     def train(self,kernel='Matern52',nugget=1.0e-8):
         """
@@ -274,7 +276,11 @@ class PyroGPE:
             frequency_GPE, growthrate_GPE = self.create_gpes(params,targets,kernel=self.kernel,nugget=self.nugget)
 
             # Compare the prediction with the omitted value
-            freq, gamma, freq_unc, gamma_unc = self.evaluate_gpes(loocv_params,frequency_GPE,growthrate_GPE)
+            freq_data, gamma_data = self.evaluate_gpes(loocv_params,frequency_GPE,growthrate_GPE)
+            freq      = freq_data[0]
+            freq_unc  = freq_data[1]
+            gamma     = gamma_data[0]
+            gamma_unc = gamma_data[1]
 
             # Calculate deviations
             frequency_zs[i] = self.get_Z_values( freq, freq_unc,loocv_target[0])
