@@ -186,12 +186,12 @@ class PyroGPE:
 
         with open( self.directory + os.sep + filename, 'w' ) as gpefile:
 
-            gpefile.write('kernel : '+str(self.kernel))
-            gpefile.write('nugget : '+str(self.nugget))
+            gpefile.write('kernel : '+str(self.kernel)+'\n')
+            gpefile.write('nugget : '+str(self.nugget)+'\n')
 
             # Write hyperparameters
             for i in range(GPE.n_params):
-                gpefile.write(str(hyperparameters[i]))
+                gpefile.write(str(hyperparameters[i])+'\n')
 
     def read_hyperparameter_file(self,filename):
         """
