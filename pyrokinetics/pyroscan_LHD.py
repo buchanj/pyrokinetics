@@ -209,9 +209,9 @@ class PyroLHD(PyroScan):
             pyro = Pyro(gk_file=run_input_file, gk_type='GS2')
 
             # Read output data
-            pyro.gs2.load_grids(pyro)
-            pyro.gs2.load_fields(pyro)
-            pyro.gs2.load_eigenvalues(pyro)
+            pyro.gk_code.load_grids(pyro)
+            pyro.gk_code.load_fields(pyro)
+            pyro.gk_code.load_eigenvalues(pyro)
 
             # Add this pyro object to list
             self.LHD_pyro_objects.append(pyro)
