@@ -253,13 +253,16 @@ class PyroGPE:
         self.write_hyperparameter_file(freq_file,  self.frequency_GPE)
         self.write_hyperparameter_file(gamma_file, self.growthrate_GPE)
 
-    def load_gpes(self,directory=self.directory,data_file='GPE_data.csv',freq_file='frequency.params', 
+    def load_gpes(self,directory=None,data_file='GPE_data.csv',freq_file='frequency.params', 
                   gamma_file='growthrate.params'):
         """
         Load an already trained GPE.
         Reads and fixes the hyperparameters then
         loads the input and target data and trains the GPE. 
         """
+
+        if directory is None:
+            directory = self.directory
 
         # Load training data from csv file
         self.load_training_data_from_csv(data_file)
