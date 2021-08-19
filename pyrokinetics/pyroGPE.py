@@ -14,19 +14,29 @@ class PyroGPE:
     csv files containing data or pyroscan_LHD objects
     """
 
-    def save_gpes(self):
-        """
-        Save this GPE.
-        Saves both the input and target data
-        as well as the hyperparameters. 
-        """
+    def __init__(self,directory='.'):
 
-    def load_gpes(self):
-        """
-        Load an already trained GPE.
-        Reads and fixes the hyperparameters then
-        loads the input and target data and trains the GPE. 
-        """
+        # Directory to save/load information to/from
+        self.directory         = directory 
+
+        # Parameter and target names and values
+        self.parameter_names   = None
+        self.target_names      = None
+        self.parameter_values  = None
+        self.target_values     = None
+
+        # Number of training items
+        self.training_n        = None
+
+        # Kernel type and nugget parameter for GPE
+        self.kernel            = None
+        self.nugget            = None
+
+        # The Gaussian Process Emulators
+        self.frequency_GPE     = None
+        self.growthrate_GPE    = None
+
+    # Routines for creation and evaluation of GPES ==================================================
 
     def create_gpes(self,parameters,targets,kernel='Matern52',nugget=1.0e-8):
         """
@@ -151,13 +161,123 @@ class PyroGPE:
         the CSV file into member data of the GPE class
         """
 
-        # Store file name
-        self.csv = csvfile
-
         # Names and values of inputs and outputs
-        self.parameter_names, self.parameter_values, self.target_names, self.target_values = self.read_csv(csvfile,n_outputs=n_outputs)
+        self.parameter_names, self.parameter_values, self.target_names, self.target_values = \
+            self.read_csv(csvfile,n_outputs=n_outputs)
 
         self.training_n = len( self.parameter_names )
+
+    # Routines for loading and saving trained Gaussian Processes ====================================
+    # Hyperparameter training takes time so it's important to load and save these
+    # ===============================================================================================
+
+    def write_hyperparameter_file(self,filename,GPE):
+        """
+        Write a file containing the current
+        values of the GPE hyperparameters so these
+        can be read and used to rapidly retrain.
+        """
+
+        hyperparameters = GPE.theta()
+        if hyperparameters is None:
+            print('No trained hyperparameters in GPE.')
+            print('Cannot write hyperparameter file.')
+            return
+
+        with open( self.directory + os.sep + filename, 'w' ) as gpefile:
+
+            gpefile.write('kernel : '+str(self.kernel))
+            gpefile.write('nugget : '+str(self.nugget))
+
+            # Write hyperparameters
+            for i in range(GPE.n_params):
+                gpefile.write(str(hyperparameters[i]))
+
+    def read_hyperparameter_file(self,filename):
+        """
+        Read a hyperparameter file and return the 
+        kernel type, nugget parameter and other
+        hyperparameters.
+        """
+        try:
+
+            with open( self.directory + os.sep + filename, 'r' ) as gpefile:
+
+                # Get Kernel type
+                words = f.readline().strip().split(':')
+                kernel = words[1].strip()
+
+                # Get Nugget
+                words = f.readline().strip().split(':')
+                nugget = float(words[1].strip())
+
+                # Get hyperparameters for this GPE
+                thetas = []
+                for line in gpefile:
+                    words = f.readline().strip()
+                    thetas.append( float( words[0] ) )
+
+                return kernel, nugget, np.array(thetas)
+
+        except:
+            raise Exception('Error reading hyperparameter file '+filename)
+
+    def save_gpes(self, directory=self.directory, data_file='GPE_data.csv', freq_file='frequency.params', 
+                  gamma_file='growthrate.params'):
+        """
+        Save this GPE.
+        Saves both the input and target data
+        as well as the hyperparameters. 
+        """
+
+        # Write a CSV file containing all the training data
+        with open( directory + os.sep + data_file, 'w' ) as csvfile:
+
+            # CSV writer
+            csvwriter = csv.writer(csvfile, delimiter=',')
+
+            # Create a header line containing the varied parameters and growth rates
+            headers = self.parameter_names + self.target_names
+            csvwriter.writerow(headers)
+
+            # Iterate through all runs and recover output
+            for run in range(self.training_n):
+                
+                data = np.array( list(self.parameter_values[run]) + list(self.target_values[run]) )
+                csvwriter.writerow(data)
+
+        # Write files containing the hyper parameter data for the 2 GPES
+        self.write_hyperparameter_file(freq_file,  self.frequency_GPE)
+        self.write_hyperparameter_file(gamma_file, self.growthrate_GPE)
+
+    def load_gpes(self,directory=self.directory,data_file='GPE_data.csv',freq_file='frequency.params', 
+                  gamma_file='growthrate.params'):
+        """
+        Load an already trained GPE.
+        Reads and fixes the hyperparameters then
+        loads the input and target data and trains the GPE. 
+        """
+
+        # Load training data from csv file
+        self.load_training_data_from_csv(data_file)
+
+        # Load hyperparameter data
+        kernel, nugget, freq_thetas  = self.read_hyperparameter_file(freq_file)
+        kernel, nugget, gamma_thetas = self.read_hyperparameter_file(freq_file)
+        
+        self.kernel = kernel
+        self.nugget = nugget
+
+        # Train GPEs with fixed hyperparameters
+
+        # Reshape target data into separate frequency and growth rate arrays.
+        targets = self.targets_values.transpose()
+
+        self.frequency_GPE = GaussianProcess(self.parameter_values, targets[0],kernel=self.kernel,nugget=self.nugget)
+        self.frequency_GPE.fit(freq_thetas)
+
+        self.growthrate_GPE = GaussianProcess(self.parameter_values, targets[1],kernel=self.kernel,nugget=self.nugget)
+        self.growthrate_GPE.fit(gamma_thetas)
 
     # Validation tools ----------------------------------------------------------
 

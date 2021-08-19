@@ -70,3 +70,17 @@ frequency_rms_error, gamma_rms_error, frequency_zs, gamma_zs = pyro_gpe.leave_on
 print( 'Frequency RMS error / range : '+str(frequency_rms_error) )
 print()
 print( 'Growth Rate RMS error / range : '+str(gamma_rms_error) )
+
+# Write GPEs to file so they can be read in later
+print('Saving GPEs to file')
+pyro_gpe.save_gpes()
+
+# Load GPEs back in from file and retrain
+print('Loading GPEs from file.')
+print('Reloading GPEs from file.')
+
+# Cross validate again to check no changes
+frequency_rms_error, gamma_rms_error, frequency_zs, gamma_zs = pyro_gpe.leave_one_out_cross_validate()
+print( 'Frequency RMS error / range : '+str(frequency_rms_error) )
+print()
+print( 'Growth Rate RMS error / range : '+str(gamma_rms_error) )
