@@ -33,9 +33,9 @@ pyro_scan = PyroLHD(pyro,
 
 pyro_scan.add_parameter_key(param_2, 'local_species', ['electron', 'a_lt'])
 
-pyro_scan.write(npoints=10, directory='test_GS2_LHD', template_file=gs2_file)
+pyro_scan.write(npoints=248, directory='test_GS2_LHD', template_file=gs2_file)
 
 image_name     = 'gs2_local'
-max_containers = 10 
+max_containers = 124 
 
 pyro_scan.run_docker_local(image_name,max_containers)

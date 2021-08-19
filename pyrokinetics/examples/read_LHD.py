@@ -66,7 +66,7 @@ print('Training GPEs')
 pyro_gpe.train()
 
 # Perform leave one out cross validation
-frequency_rms_error, gamma_rms_error, frequency_zs, gamma_zs = pyro_gpe.leave_one_out_cross_validate(self)
+frequency_rms_error, gamma_rms_error, frequency_zs, gamma_zs = pyro_gpe.leave_one_out_cross_validate()
 print( 'Frequency RMS error / range : '+str(frequency_rms_error) )
 print()
 print( 'Growth Rate RMS error / range : '+str(gamma_rms_error) )
