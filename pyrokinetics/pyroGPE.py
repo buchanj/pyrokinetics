@@ -152,8 +152,8 @@ class PyroGPE:
             target_names    = headers[-1*n_outputs:]
 
             for row in csvreader:
-                parameter_values.append(row[:-1*n_outputs])
-                target_values.append(row[-1*n_outputs:])
+                parameter_values.append([ float(x) for x in row[:-1*n_outputs] ])
+                target_values.append(   [ float(x) for x in row[-1*n_outputs:] ])
 
         return parameter_names, np.array(parameter_values), target_names, np.array(target_values)
 
