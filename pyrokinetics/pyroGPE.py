@@ -178,7 +178,7 @@ class PyroGPE:
         can be read and used to rapidly retrain.
         """
 
-        hyperparameters = GPE.theta()
+        hyperparameters = GPE.theta
         if hyperparameters is None:
             print('No trained hyperparameters in GPE.')
             print('Cannot write hyperparameter file.')
