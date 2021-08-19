@@ -222,13 +222,16 @@ class PyroGPE:
         except:
             raise Exception('Error reading hyperparameter file '+filename)
 
-    def save_gpes(self, directory=self.directory, data_file='GPE_data.csv', freq_file='frequency.params', 
+    def save_gpes(self, directory=None, data_file='GPE_data.csv', freq_file='frequency.params', 
                   gamma_file='growthrate.params'):
         """
         Save this GPE.
         Saves both the input and target data
         as well as the hyperparameters. 
         """
+
+        if directory is None:
+            directory = self.directory
 
         # Write a CSV file containing all the training data
         with open( directory + os.sep + data_file, 'w' ) as csvfile:
