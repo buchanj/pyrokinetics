@@ -121,7 +121,9 @@ class PyroGPE:
         self.target_names      = lhd.lhd_output_names
         self.parameter_values  = lhd.lhd_inputs
         self.target_values     = lhd.lhd_outputs
-        self.training_n        = len( self.parameter_names )
+        self.training_n        = len( self.parameter_values )
+
+        print('Loaded '+str(self.training_n)+' data items from LHD\n')
 
     def read_csv(self,csvfile,n_outputs=2):
         """
@@ -147,13 +149,13 @@ class PyroGPE:
                 raise Exception(f'CSV file contains fewer than {n_outputs+1} entries per row.')
 
             parameter_names = headers[:-1*n_outputs]
-            output_names    = headers[-1*n_outputs:]
+            target_names    = headers[-1*n_outputs:]
 
             for row in csvreader:
                 parameter_values.append(row[:-1*n_outputs])
                 target_values.append(row[-1*n_outputs:])
 
-        return parameter_names, parameter_values, target_names, target_values
+        return parameter_names, np.array(parameter_values), target_names, np.array(target_values)
 
     def load_training_data_from_csv(self,csvfile,n_outputs=2):
         """
@@ -165,7 +167,8 @@ class PyroGPE:
         self.parameter_names, self.parameter_values, self.target_names, self.target_values = \
             self.read_csv(csvfile,n_outputs=n_outputs)
 
-        self.training_n = len( self.parameter_names )
+        self.training_n = self.parameter_values.shape[0]
+        print('Loaded '+str(self.training_n)+' data items from CSV file.\n')
 
     # Routines for loading and saving trained Gaussian Processes ====================================
     # Hyperparameter training takes time so it's important to load and save these
@@ -204,17 +207,17 @@ class PyroGPE:
             with open( self.directory + os.sep + filename, 'r' ) as gpefile:
 
                 # Get Kernel type
-                words = f.readline().strip().split(':')
+                words = gpefile.readline().strip().split(':')
                 kernel = words[1].strip()
 
                 # Get Nugget
-                words = f.readline().strip().split(':')
+                words = gpefile.readline().strip().split(':')
                 nugget = float(words[1].strip())
 
                 # Get hyperparameters for this GPE
                 thetas = []
                 for line in gpefile:
-                    words = f.readline().strip()
+                    words = line.strip().split()
                     thetas.append( float( words[0] ) )
 
                 return kernel, nugget, np.array(thetas)
@@ -277,12 +280,12 @@ class PyroGPE:
         # Train GPEs with fixed hyperparameters
 
         # Reshape target data into separate frequency and growth rate arrays.
-        targets = self.targets_values.transpose()
+        targets = self.target_values.transpose()
 
-        self.frequency_GPE = GaussianProcess(self.parameter_values, targets[0],kernel=self.kernel,nugget=self.nugget)
+        self.frequency_GPE = mogp.GaussianProcess(self.parameter_values, targets[0],kernel=self.kernel,nugget=self.nugget)
         self.frequency_GPE.fit(freq_thetas)
 
-        self.growthrate_GPE = GaussianProcess(self.parameter_values, targets[1],kernel=self.kernel,nugget=self.nugget)
+        self.growthrate_GPE = mogp.GaussianProcess(self.parameter_values, targets[1],kernel=self.kernel,nugget=self.nugget)
         self.growthrate_GPE.fit(gamma_thetas)
 
     # Validation tools ----------------------------------------------------------

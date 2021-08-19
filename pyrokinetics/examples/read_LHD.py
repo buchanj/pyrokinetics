@@ -44,7 +44,7 @@ max_containers = 124
 
 #pyro_scan.run_docker_local(image_name,max_containers)
 
-pyro_scan.latin_hypercube_n = 248
+pyro_scan.latin_hypercube_n = 6
 pyro_scan.run_directory = './test_GS2_LHD/'
 
 print('Collating LHD results')
@@ -67,6 +67,7 @@ pyro_gpe.train()
 
 # Perform leave one out cross validation
 frequency_rms_error, gamma_rms_error, frequency_zs, gamma_zs = pyro_gpe.leave_one_out_cross_validate()
+print()
 print( 'Frequency RMS error / range : '+str(frequency_rms_error) )
 print()
 print( 'Growth Rate RMS error / range : '+str(gamma_rms_error) )
@@ -77,10 +78,13 @@ pyro_gpe.save_gpes()
 
 # Load GPEs back in from file and retrain
 print('Loading GPEs from file.')
-print('Reloading GPEs from file.')
+
+pyro_gpe = PyroGPE()
+pyro_gpe.load_gpes()
 
 # Cross validate again to check no changes
 frequency_rms_error, gamma_rms_error, frequency_zs, gamma_zs = pyro_gpe.leave_one_out_cross_validate()
+print()
 print( 'Frequency RMS error / range : '+str(frequency_rms_error) )
 print()
 print( 'Growth Rate RMS error / range : '+str(gamma_rms_error) )
