@@ -17,11 +17,15 @@ class PyroGPE:
     def save_gpes(self):
         """
         Save this GPE.
+        Saves both the input and target data
+        as well as the hyperparameters. 
         """
 
     def load_gpes(self):
         """
         Load an already trained GPE.
+        Reads and fixes the hyperparameters then
+        loads the input and target data and trains the GPE. 
         """
 
     def create_gpes(self,parameters,targets,kernel='Matern52',nugget=1.0e-8):
