@@ -66,7 +66,7 @@ class PyroScan_LHD(PyroScan_GPE):
 
         return self.lhd_input_names, self.lhd_inputs, self.lhd_output_names, self.lhd_outputs
 
-    def run(image_name='gs2_local',max_containers=124):
+    def run(self,image_name='gs2_local',max_containers=124):
         """
         Checks settings and runs Latin Hypercube Design.
         """

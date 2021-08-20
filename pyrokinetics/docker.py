@@ -34,7 +34,7 @@ def wait_until_finished(image_name,wait_time=60):
 
     while True:
 
-        finished = docker.check_finished(image_name)
+        finished = check_finished(image_name)
         if not finished:
             print('Jobs are still running!')
             time.sleep(wait_time)
