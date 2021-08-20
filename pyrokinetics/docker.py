@@ -64,7 +64,7 @@ def submit_container(image_name,run_directory,cores_per_run):
     os.system(command)
     print('Submitted')
 
-def can_run_container(cores_per_run, max_containers):
+def can_run_container(image_name,cores_per_run, max_containers):
     """
     Checks if there is sufficient available cores to run
     another containter based on cores per job.
@@ -112,7 +112,7 @@ def run_docker_local(directory,nruns,cores_per_run,image_name,max_containers):
             try:
 
                 # Check if there are processors available for new container
-                can_run = can_run_container(cores_per_run, max_containers)
+                can_run = can_run_container(image_name,cores_per_run, max_containers)
 
                 if( can_run ):
 
