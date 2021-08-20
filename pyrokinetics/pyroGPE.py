@@ -1,13 +1,11 @@
 from .pyro import Pyro
 from .pyroscan import PyroScan, set_in_dict, get_from_dict
+from .gpe_csv import *
 import os
-import multiprocessing
-import time
 import numpy as np
 import scipy
 import csv
 import mogp_emulator as mogp
-import gpe_csv
 
 class PyroGPE:
     """

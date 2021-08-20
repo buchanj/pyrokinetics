@@ -1,4 +1,4 @@
-from pyrokinetics import Pyro, PyroScan, PyroLHD
+from pyrokinetics import Pyro, PyroScan, PyroScan_LHD
 import os
 import numpy as np
 
@@ -24,11 +24,11 @@ param_dict = {param_1: values_1,
               param_2: values_2}
 
 # Create PyroScan object
-pyro_scan = PyroLHD(pyro,
-                    param_dict,
-                    value_fmt='.3f',
-                    value_separator='_',
-                    parameter_separator='_'
+pyro_scan = PyroScan_LHD(pyro,
+                         param_dict,
+                         value_fmt='.3f',
+                         value_separator='_',
+                         parameter_separator='_'
 )
 
 pyro_scan.add_parameter_key(param_2, 'local_species', ['electron', 'a_lt'])

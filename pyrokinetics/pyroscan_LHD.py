@@ -5,11 +5,9 @@
 from .pyro import Pyro
 from .pyroscan import PyroScan, set_in_dict, get_from_dict
 from .pyroscan_GPE import PyroScan_GPE
+from .docker import *
 import os
-import docker
-import time
 import numpy as np
-import gpe_csv
 
 class PyroScan_LHD(PyroScan_GPE):
     """
@@ -39,9 +37,9 @@ class PyroScan_LHD(PyroScan_GPE):
         self.latin_hypercube_n = npoints
 
         # Generate a Latin Hypercube
-        lhs = lhs(len(self.param_dict), self.latin_hypercube_n, 'maximin')
+        lhd = lhs(len(self.param_dict), self.latin_hypercube_n, 'maximin')
 
-        write_batch(lhs, file_name=file_name, directory=directory, template_file=template_file)
+        super().write_batch(lhd, file_name=file_name, directory=directory, template_file=template_file)
 
     def check_settings(self):
         """
@@ -64,10 +62,10 @@ class PyroScan_LHD(PyroScan_GPE):
         
         finished = docker.wait_until_finished(self.image)
         
-        super.collate_results(self.run_directory,self.latin_hypercube_n,filename=self.file_name)
+        super().collate_results(self.run_directory,self.latin_hypercube_n,filename=self.file_name)
 
         self.lhd_input_names, self.lhd_inputs, self.lhd_output_names, self.lhd_outputs = \
-            super.get_parameters_and_targets(self.current_pyro_objects)
+            super().get_parameters_and_targets(self.current_pyro_objects)
 
         return self.lhd_input_names, self.lhd_inputs, self.lhd_output_names, self.lhd_outputs
 
@@ -79,4 +77,4 @@ class PyroScan_LHD(PyroScan_GPE):
         self.image = image_name
         self.check_settings()
 
-        super.run(self.run_directory,self.latin_hypercube_n,image_name,max_containers)
+        super().run(self.run_directory,self.latin_hypercube_n,image_name,max_containers)

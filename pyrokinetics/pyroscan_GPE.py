@@ -2,8 +2,8 @@ from .pyro import Pyro
 from .pyroscan import PyroScan, set_in_dict, get_from_dict
 import os
 import numpy as np
-import docker
-import gpe_csv
+from .docker import *
+from .gpe_csv import *
 
 # A derived pyroscan class for handling latin hypercube and sequential
 # design studies. These each have their own class derived from this.
@@ -102,7 +102,8 @@ class PyroScan_GPE(PyroScan):
 
                 params.append( value )
                 
-        scaled_parameters.append(params)
+            scaled_parameters.append(params)
+
         return np.array(scaled_parameters)
 
     def write_batch(self, parameters, file_name='gs2.in', directory='.', template_file=None):
@@ -113,7 +114,11 @@ class PyroScan_GPE(PyroScan):
         using the above functions.
         """
 
+        if self.gpe_param_dict is None:
+            self.get_parameter_ranges()
+
         nruns = parameters.shape[0]
+        print('Submitting '+str(nruns)+' GS2 runs.')
 
         # Check if parameters are in viable options
         for key in self.param_dict.keys():
@@ -129,7 +134,7 @@ class PyroScan_GPE(PyroScan):
             # Create file name for each run
             run_directory = directory + os.sep + 'iteration_'+str(run) + os.sep
 
-            for param, vdict in self.lhs_param_dict.items():
+            for param, vdict in self.gpe_param_dict.items():
 
                 # Get index for this parameter
                 index = vdict['id']
