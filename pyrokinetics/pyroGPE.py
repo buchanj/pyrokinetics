@@ -7,6 +7,7 @@ import numpy as np
 import scipy
 import csv
 import mogp_emulator as mogp
+import gpe_csv
 
 class PyroGPE:
     """
@@ -115,7 +116,7 @@ class PyroGPE:
 
         # Get data
         if lhd.lhd_inputs is None:
-            lhd.get_parameters_and_targets()
+            lhd.recover_output()
 
         self.parameter_names   = lhd.lhd_input_names
         self.target_names      = lhd.lhd_output_names
@@ -125,47 +126,15 @@ class PyroGPE:
 
         print('Loaded '+str(self.training_n)+' data items from LHD\n')
 
-    def read_csv(self,csvfile,n_outputs=2):
-        """
-        Read data from a csv file containing input parameters and growth 
-        rate data. By default the last two entries are assumed to be 
-        frequency and growth rate respectively.
-        """
-
-        # Parameter values at training locations and target 
-        # values at these locations in parameter space
-
-        parameter_values  = []
-        target_values     = []
-        
-        with open(csvfile) as cfile:
-            
-            csvreader = csv.reader(cfile, delimiter=',')
-
-            # Assume first line is row of parameter names
-            headers = next(csvreader)
-            
-            if len(headers) < n_outputs+1:
-                raise Exception(f'CSV file contains fewer than {n_outputs+1} entries per row.')
-
-            parameter_names = headers[:-1*n_outputs]
-            target_names    = headers[-1*n_outputs:]
-
-            for row in csvreader:
-                parameter_values.append([ float(x) for x in row[:-1*n_outputs] ])
-                target_values.append(   [ float(x) for x in row[-1*n_outputs:] ])
-
-        return parameter_names, np.array(parameter_values), target_names, np.array(target_values)
-
     def load_training_data_from_csv(self,csvfile,n_outputs=2):
         """
-        Wrapper to the above data for training data. Stores the data from
-        the CSV file into member data of the GPE class
+        Wrapper to the routine for reading training data in a csv file. 
+        Stores the data from the CSV file into member data of the GPE class.
         """
 
         # Names and values of inputs and outputs
         self.parameter_names, self.parameter_values, self.target_names, self.target_values = \
-            self.read_csv(csvfile,n_outputs=n_outputs)
+            gpe_csv.read_csv(csvfile,n_outputs=n_outputs)
 
         self.training_n = self.parameter_values.shape[0]
         print('Loaded '+str(self.training_n)+' data items from CSV file.\n')
@@ -358,7 +327,7 @@ class PyroGPE:
         """
 
         if lhd.lhd_inputs is None:
-            lhd.get_parameters_and_targets()
+            lhd.recover_output()
 
         if self.parameter_names != lhd.lhd_input_names or self.target_names != lhd.lhd_output_names:
             raise Exception("Test data does not match training data!")
@@ -371,7 +340,7 @@ class PyroGPE:
         """
 
         # Names and values of inputs and outputs
-        parameter_names, parameter_values, target_names, target_values = self.read_csv(csvfile,n_outputs=n_outputs)
+        parameter_names, parameter_values, target_names, target_values = gpe_csv.read_csv(csvfile,n_outputs=n_outputs)
 
         if self.parameter_names != parameter_names or self.target_names != target_names:
             raise Exception("Test data does not match training data!")
