@@ -37,18 +37,18 @@ pyro_scan = PyroScan_LHD(pyro,
 
 pyro_scan.add_parameter_key(param_2, 'local_species', ['electron', 'a_lt'])
 
-#pyro_scan.write(npoints=248, directory='test_output')
+pyro_scan.write(npoints=248, directory='test_GS2_LHD')
 
 image_name     = 'gs2_local'
 max_containers = 124 
 
-#pyro_scan.run_docker_local(image_name,max_containers)
+pyro_scan.run(image_name=image_name,max_containers=max_containers)
 
-pyro_scan.latin_hypercube_n = 6
-pyro_scan.run_directory = './test_GS2_LHD/'
+#pyro_scan.latin_hypercube_n = 248
+#pyro_scan.run_directory = './test_GS2_LHD/'
 
 print('Collating LHD results')
-pyro_scan.recover_output(wait=False)
+pyro_scan.recover_output(wait=True)
 
 print('Creating output csv')
 pyro_scan.create_csv()
