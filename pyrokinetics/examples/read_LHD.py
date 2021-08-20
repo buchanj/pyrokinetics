@@ -1,4 +1,4 @@
-from pyrokinetics import Pyro, PyroScan, PyroLHD, PyroGPE
+from pyrokinetics import Pyro, PyroScan, PyroScan_LHD, PyroGPE
 import os
 import numpy as np
 
@@ -27,12 +27,12 @@ param_dict = {param_1: values_1,
               param_2: values_2}
 
 # Create PyroScan object
-pyro_scan = PyroLHD(pyro,
-                    param_dict,
-                    value_fmt='.3f',
-                    value_separator='_',
-                    parameter_separator='_',
-                    file_name='gs2.in'
+pyro_scan = PyroScan_LHD(pyro,
+                         param_dict,
+                         value_fmt='.3f',
+                         value_separator='_',
+                         parameter_separator='_',
+                         file_name='gs2.in'
 )
 
 pyro_scan.add_parameter_key(param_2, 'local_species', ['electron', 'a_lt'])
@@ -48,7 +48,7 @@ pyro_scan.latin_hypercube_n = 6
 pyro_scan.run_directory = './test_GS2_LHD/'
 
 print('Collating LHD results')
-pyro_scan.collate_results()
+pyro_scan.recover_output(wait=False)
 
 print('Creating output csv')
 pyro_scan.create_csv()

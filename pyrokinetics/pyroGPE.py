@@ -132,7 +132,7 @@ class PyroGPE:
 
         # Names and values of inputs and outputs
         self.parameter_names, self.parameter_values, self.target_names, self.target_values = \
-            gpe_csv.read_csv(csvfile,n_outputs=n_outputs)
+            read_csv(csvfile,n_outputs=n_outputs)
 
         self.training_n = self.parameter_values.shape[0]
         print('Loaded '+str(self.training_n)+' data items from CSV file.\n')
@@ -338,7 +338,7 @@ class PyroGPE:
         """
 
         # Names and values of inputs and outputs
-        parameter_names, parameter_values, target_names, target_values = gpe_csv.read_csv(csvfile,n_outputs=n_outputs)
+        parameter_names, parameter_values, target_names, target_values = read_csv(csvfile,n_outputs=n_outputs)
 
         if self.parameter_names != parameter_names or self.target_names != target_names:
             raise Exception("Test data does not match training data!")

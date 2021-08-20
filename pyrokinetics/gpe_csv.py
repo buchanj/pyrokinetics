@@ -2,6 +2,8 @@
 # to and from csv files.
 
 import csv
+import os
+import numpy as np
 
 def create_csv(directory, filename, input_names, inputs, output_names, outputs):
     """

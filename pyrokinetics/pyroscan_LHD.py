@@ -5,7 +5,6 @@
 from .pyro import Pyro
 from .pyroscan import PyroScan, set_in_dict, get_from_dict
 from .pyroscan_GPE import PyroScan_GPE
-from .docker import *
 import os
 import numpy as np
 
@@ -55,14 +54,12 @@ class PyroScan_LHD(PyroScan_GPE):
             print('Run directory is unset, assuming pwd.')
             self.run_directory = '.'
         
-    def recover_output():
+    def recover_output(self,wait=True):
         """
         Recovers output after runs have completed.
         """
         
-        finished = docker.wait_until_finished(self.image)
-        
-        super().collate_results(self.run_directory,self.latin_hypercube_n,filename=self.file_name)
+        super().collate_results(self.run_directory,self.latin_hypercube_n,filename=self.file_name,wait=wait)
 
         self.lhd_input_names, self.lhd_inputs, self.lhd_output_names, self.lhd_outputs = \
             super().get_parameters_and_targets(self.current_pyro_objects)
@@ -78,3 +75,10 @@ class PyroScan_LHD(PyroScan_GPE):
         self.check_settings()
 
         super().run(self.run_directory,self.latin_hypercube_n,image_name,max_containers)
+
+    def create_csv(self):
+        """
+        Creates a CSV file containing the varied parameter data and resulting growth rates.
+        """
+
+        super().create_csv(self.current_pyro_objects,self.run_directory,self.file_name)

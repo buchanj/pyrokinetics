@@ -150,13 +150,16 @@ class PyroScan_GPE(PyroScan):
 
             self.pyro.write_gk_file(file_name, directory=run_directory, template_file=template_file)
 
-    def collate_results(self,directory,nruns,filename='gs2.in'):
+    def collate_results(self,directory,nruns,filename='gs2.in',wait=True):
         """
         Appends data from completed runs stored in <directory>
         into a set of pyro objects. <filename> is the name of the
         run input file (default gs2.in). nruns is the number of 
         runs to read.
         """
+
+        if wait:
+            wait_until_finished(self.image)
 
         self.current_pyro_objects = []
 
@@ -244,7 +247,7 @@ class PyroScan_GPE(PyroScan):
         input_names, inputs, output_names, outputs = self.get_parameters_and_targets(pyro_objects)
 
         # Write the data file
-        gpe_csv.create_csv(directory, filename, input_names, inputs, output_names, outputs)
+        create_csv(directory, filename, input_names, inputs, output_names, outputs)
 
     def run(self,directory,nruns,image_name,max_containers):
         """ 
@@ -252,4 +255,4 @@ class PyroScan_GPE(PyroScan):
         """
 
         # Submit container when cores are available
-        docker.run_docker_local(directory,nruns,self.cores_per_run,image_name,max_containers)
+        run_docker_local(directory,nruns,self.cores_per_run,image_name,max_containers)
