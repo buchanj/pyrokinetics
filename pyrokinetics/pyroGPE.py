@@ -130,7 +130,7 @@ class PyroGPE:
         self.target_names      = lhd.target_names
         self.parameter_values  = lhd.parameters
         self.target_values     = lhd.targets
-        self.training_n        = len( self.parameters )
+        self.training_n        = len( self.parameter_values )
 
         print('Loaded '+str(self.training_n)+' data items from LHD\n')
 
