@@ -8,8 +8,6 @@ from .gpe_csv import *
 # A derived pyroscan class for handling latin hypercube and sequential
 # design studies. These each have their own class derived from this.
 
-# FIXME - Set input and output name variables on initialisation. They are fixed and constant.
-
 class PyroScan_GPE(PyroScan):
     """
     A PyroScan derived class for creating and running 
@@ -24,6 +22,8 @@ class PyroScan_GPE(PyroScan):
 
     def __init__(self, 
                  pyro,
+                 directory = './'
+                 image_name = 'gs2_local'
                  param_dict = None,
                  p_prime_type = 0,
                  value_fmt = '.2f',
@@ -45,6 +45,12 @@ class PyroScan_GPE(PyroScan):
                          file_name=file_name,
                          load_default_parameter_keys=load_default_parameter_keys)
 
+        # Top level run directory
+        self.directory = directory
+
+        # Docker image name
+        self.image_name = image_name
+
         # Cores to use for each GS2 run
         self.cores_per_run = cores_per_run
 
@@ -56,6 +62,16 @@ class PyroScan_GPE(PyroScan):
 
         # Dictionary containing variable names and parameter ranges
         self.gpe_param_dict = None
+
+        # Parameter and target names
+        self.parameter_names  = list(self.param_dict.keys())
+        self.target_names     = ['mode_frequency','growth_rate']
+
+    def get_parameter_and_target_names():
+        """
+        Returns parameter and target names.
+        """
+        return self.parameter_names, self.target_names
 
     def get_parameter_ranges(self):
         """
@@ -108,7 +124,7 @@ class PyroScan_GPE(PyroScan):
 
         return np.array(scaled_parameters)
 
-    def write_batch(self, parameters, file_name='gs2.in', directory='.', template_file=None):
+    def write_batch(self, parameters, directory='.', template_file=None):
         """
         Creates and writes GK input files for a set of parameters (numpy array).
         Parameters is expected to be a 2D numpy array (nruns,nparams) containing
@@ -150,13 +166,12 @@ class PyroScan_GPE(PyroScan):
                 # Set the value given the dictionary and location of parameter
                 set_in_dict(param_dict, keys_to_param, scaled_parameters[run,index] )
 
-            self.pyro.write_gk_file(file_name, directory=run_directory, template_file=template_file)
+            self.pyro.write_gk_file(self.file_name, directory=run_directory, template_file=template_file)
 
-    def collate_results(self,directory,nruns,filename='gs2.in',wait=True):
+    def collate_results(self, directory, nruns, wait=True):
         """
         Appends data from completed runs stored in <directory>
-        into a set of pyro objects. <filename> is the name of the
-        run input file (default gs2.in). nruns is the number of 
+        into a set of pyro objects. nruns is the number of 
         runs to read.
         """
 
@@ -175,7 +190,7 @@ class PyroScan_GPE(PyroScan):
             run_directory =  directory + os.sep + 'iteration_'+str(run) + os.sep
             
             # Input file name
-            run_input_file = os.path.join(run_directory, filename)
+            run_input_file = os.path.join(run_directory, self.file_name)
             print('Reading '+run_input_file+' into Pyro object')
 
             # Read input file into a Pyro object
@@ -195,9 +210,6 @@ class PyroScan_GPE(PyroScan):
         Returns an array of the varied input parameter and output values (frequency and growth rate)
         for the stored pyro objects contained in pyro_objects.
         """
-
-        input_names  = list(self.param_dict.keys())
-        output_names = ['mode_frequency','growth_rate']
 
         inputs  = []
         outputs = []
@@ -237,7 +249,7 @@ class PyroScan_GPE(PyroScan):
             inputs.append( inputs_ )
             outputs.append( outputs_ )
 
-        return input_names, np.array(inputs), output_names, np.array(outputs)
+        return np.array(inputs), np.array(outputs)
         
     def create_csv(self,pyro_objects,directory,filename):
         """
@@ -246,15 +258,15 @@ class PyroScan_GPE(PyroScan):
         """
 
         # Get data
-        input_names, inputs, output_names, outputs = self.get_parameters_and_targets(pyro_objects)
+        parameters, targets = self.get_parameters_and_targets(pyro_objects)
 
         # Write the data file
-        create_csv(directory, filename, input_names, inputs, output_names, outputs)
+        create_csv(directory, filename, self.parameter_names, parameters, self.target_names, targets)
 
-    def run(self,directory,nruns,image_name,max_containers):
+    def run(self,directory,nruns,max_containers):
         """ 
         Submits a set of containerised GS2 runs prepared in <directory>.
         """
 
         # Submit container when cores are available
-        run_docker_local(directory,nruns,self.cores_per_run,image_name,max_containers)
+        run_docker_local(directory,nruns,self.cores_per_run,self.image_name,max_containers)

@@ -56,8 +56,10 @@ class PyroScan_LHD(PyroScan_GPE):
         
         super().collate_results(self.run_directory,self.latin_hypercube_n,filename=self.file_name,wait=wait)
 
-        self.lhd_input_names, self.lhd_inputs, self.lhd_output_names, self.lhd_outputs = \
-            super().get_parameters_and_targets(self.current_pyro_objects)
+        self.lhd_input_names  = self.parameter_names
+        self.lhd_output_names = self.target_names 
+
+        self.lhd_inputs, self.lhd_outputs = super().get_parameters_and_targets(self.current_pyro_objects)
 
         return self.lhd_input_names, self.lhd_inputs, self.lhd_output_names, self.lhd_outputs
 
