@@ -77,3 +77,24 @@ class PyroScan_LHD(PyroScan_GPE):
         """
 
         super().create_csv(self.current_pyro_objects,self.run_directory,self.file_name)
+
+    def submit(self,image_name='gs2_local', npoints=248, directory='./', template_file=None,
+               max_containers=124, wait=True):
+        """
+        Submits the full workflow of designing the LHD, submitting the runs 
+        and recovering the output.
+        """
+
+        # Generate files
+        self.write(npoints=npoints, directory=directory, template_file=template_file)
+
+        # Submit runs
+        self.run(image_name=image_name,max_containers=max_containers)
+        
+        if wait:
+
+            # Recover output data
+            input_names, inputs, output_names, outputs = self.recover_output()
+            
+            # Create csv file
+            self.create_csv()
