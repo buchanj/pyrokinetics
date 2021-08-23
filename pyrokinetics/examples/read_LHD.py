@@ -43,10 +43,13 @@ pyro_scan.add_parameter_key(param_2, 'local_species', ['electron', 'a_lt'])
 pyro_scan.submit(npoints=248, max_containers=124, wait=False)
 
 pyro_scan.latin_hypercube_n = 248
-pyro_scan.run_directory = './test_GS2_LHD/'
+pyro_scan.directory = './test_GS2_LHD/'
+
+print('Collating results...')
+pyro_scan.collate_results(pyro_scan.directory, pyro_scan.latin_hypercube_n, wait=True)
 
 print('Creating output csv')
-pyro_scan.create_csv()
+pyro_scan.create_csv('LHD.csv')
 
 # Train a GPE using the stored data
 
