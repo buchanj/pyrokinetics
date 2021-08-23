@@ -59,7 +59,8 @@ class PyroScan_LHD(PyroScan_GPE):
     def submit(self,npoints=248, max_containers=124, filename='LHD.csv', wait=True):
         """
         Submits the full workflow of designing the LHD, submitting the runs 
-        and recovering the output.
+        and recovering the output. If wait is False it just submits the runs
+        and then returns.
         """
 
         # Generate files
@@ -71,6 +72,8 @@ class PyroScan_LHD(PyroScan_GPE):
         if wait:
 
             # Recover output data
+            self.collate_results(self.directory, self.latin_hypercube_n):
+
             inputs, output = self.get_parameters_and_targets(self.current_pyro_objects)
 
             # Create csv file

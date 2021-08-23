@@ -168,7 +168,7 @@ class PyroScan_MICE(PyroScan_GPE):
         self.run_batch( 0, max_containers=max_containers )
 
         # Recover initial batch 
-        inputs, outputs = self.recover_output(0)
+        inputs, outputs = self.recover_batch_output(0)
 
         # Train initial design
         self.train_initial_design(outputs)
@@ -193,7 +193,7 @@ class PyroScan_MICE(PyroScan_GPE):
         self.run_batch( batch_number, max_containers=max_containers )
 
         # Recover batch 
-        inputs, outputs = self.recover_output(batch_number)
+        inputs, outputs = self.recover_batch_output(batch_number)
 
         # Update MICE Design
         self.train_mice_batch(outputs)

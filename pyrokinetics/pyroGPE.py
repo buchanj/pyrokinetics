@@ -120,14 +120,17 @@ class PyroGPE:
         """
 
         # Get data
-        if lhd.lhd_inputs is None:
-            lhd.recover_output()
+        if lhd.parameters is None:
 
-        self.parameter_names   = lhd.lhd_input_names
-        self.target_names      = lhd.lhd_output_names
-        self.parameter_values  = lhd.lhd_inputs
-        self.target_values     = lhd.lhd_outputs
-        self.training_n        = len( self.parameter_values )
+            # Recover output data
+            lhd.collate_results(lhd.directory, lhd.latin_hypercube_n):
+            lhd.get_parameters_and_targets(lhd.current_pyro_objects)
+
+        self.parameter_names   = lhd.parameter_names
+        self.target_names      = lhd.target_names
+        self.parameter_values  = lhd.parameters
+        self.target_values     = lhd.targets
+        self.training_n        = len( self.parameters )
 
         print('Loaded '+str(self.training_n)+' data items from LHD\n')
 
