@@ -37,7 +37,7 @@ class PyroGPE:
 
     # Routines for creation and evaluation of GPES ==================================================
 
-    def create_gpes(self,parameters,targets,kernel='Matern52',nugget=1.0e-8):
+    def create_gpes(self,parameters,targets,thetas=None,kernel='Matern52',nugget=1.0e-8):
         """
         Build Gaussian Process Emulators for frequency and growth rate based
         on training data.
@@ -53,8 +53,15 @@ class PyroGPE:
         targets_ = targets.transpose()
 
         # Train Gaussian Processes
-        frequency_GPE  = mogp.fit_GP_MAP( parameters, targets_[0], kernel=kernel, nugget=nugget)
-        growthrate_GPE = mogp.fit_GP_MAP( parameters, targets_[1], kernel=kernel, nugget=nugget)
+        if thetas is None:
+            frequency_GPE  = mogp.fit_GP_MAP( parameters, targets_[0], kernel=kernel, nugget=nugget)
+            growthrate_GPE = mogp.fit_GP_MAP( parameters, targets_[1], kernel=kernel, nugget=nugget)
+        else:
+            frequency_GPE  = GaussianProcess( parameters, targets_[0], kernel=kernel, nugget=nugget)
+            frequency_GPE.fit(thetas[0])
+
+            growthrate_GPE = GaussianProcess( parameters, targets_[1], kernel=kernel, nugget=nugget)
+            growthrate_GPE.fit(thetas[1])
 
         return frequency_GPE, growthrate_GPE
 
@@ -78,7 +85,7 @@ class PyroGPE:
 
         return freq_data, gamma_data
 
-    def train(self,kernel='Matern52',nugget=1.0e-8):
+    def train(self,thetas=None,kernel='Matern52',nugget=1.0e-8):
         """
         A wrapper to the above create_gpes function for training the main Gaussian 
         Processes based on the training data (as opposed to cross validation cases).
@@ -92,7 +99,7 @@ class PyroGPE:
         self.nugget = nugget
 
         self.frequency_GPE, self.growthrate_GPE = \
-            self.create_gpes(self.parameter_values,self.target_values,kernel=kernel,nugget=nugget)
+            self.create_gpes(self.parameter_values,self.target_values,thetas=thetas,kernel=kernel,nugget=nugget)
 
     def predict(self,inputs,uncertainty=True):
         """
