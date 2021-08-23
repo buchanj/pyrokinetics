@@ -63,7 +63,7 @@ class PyroScan_LHD(PyroScan_GPE):
         """
 
         # Generate files
-        self.write(npoints=npoints, template_file=self.template_file)
+        self.write(npoints=npoints)
 
         # Submit runs
         self.run(max_containers=max_containers)

@@ -28,7 +28,10 @@ param_dict = {param_1: values_1,
 
 # Create PyroScan object
 pyro_scan = PyroScan_LHD(pyro,
-                         param_dict,
+                         directory = './test_GS2_LHD',
+                         image_name = 'gs2_local',
+                         template_file = gs2_file,
+                         param_dict = param_dict,
                          value_fmt='.3f',
                          value_separator='_',
                          parameter_separator='_',
@@ -37,18 +40,10 @@ pyro_scan = PyroScan_LHD(pyro,
 
 pyro_scan.add_parameter_key(param_2, 'local_species', ['electron', 'a_lt'])
 
-pyro_scan.write(npoints=248, directory='test_GS2_LHD')
+pyro_scan.submit(npoints=248, max_containers=124, wait=False)
 
-image_name     = 'gs2_local'
-max_containers = 124 
-
-pyro_scan.run(image_name=image_name,max_containers=max_containers)
-
-#pyro_scan.latin_hypercube_n = 248
-#pyro_scan.run_directory = './test_GS2_LHD/'
-
-print('Collating LHD results')
-pyro_scan.recover_output(wait=True)
+pyro_scan.latin_hypercube_n = 248
+pyro_scan.run_directory = './test_GS2_LHD/'
 
 print('Creating output csv')
 pyro_scan.create_csv()

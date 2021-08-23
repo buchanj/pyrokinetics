@@ -22,7 +22,7 @@ class PyroScan_GPE(PyroScan):
 
     def __init__(self, 
                  pyro,
-                 directory = './'
+                 directory = './',
                  image_name = 'gs2_local',
                  template_file = None,
                  param_dict = None,
