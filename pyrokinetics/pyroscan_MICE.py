@@ -115,7 +115,6 @@ class PyroScan_MICE(PyroScan_GPE):
     def recover_batch_output(self,batch_number,wait=True):
         """
         Recovers output after runs have completed.
-        Uses this to update MICE Gaussian Process.
         """
 
         self.check_settings(batch_number)
@@ -212,7 +211,7 @@ class PyroScan_MICE(PyroScan_GPE):
         # Run batch
         self.run_batch( batch_number, image_name=image_name, max_containers=max_containers )
 
-        # Recover initial batch 
+        # Recover batch 
         input_names, inputs, output_names, outputs = self.recover_output(batch_number)
 
         # Update MICE Design
