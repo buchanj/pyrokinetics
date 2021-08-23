@@ -180,7 +180,7 @@ class PyroScan_GPE(PyroScan):
         """
 
         if wait:
-            wait_until_finished(self.image)
+            wait_until_finished(self.image_name)
 
         self.current_pyro_objects = []
 
