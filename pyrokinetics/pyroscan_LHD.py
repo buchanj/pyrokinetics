@@ -1,7 +1,3 @@
-# Need to write a run script based on example scan and example analysis
-# This should use this to submit a batched LHD scan then once that has
-# finished loop over the results directories and aggregate the results.  
-
 from .pyro import Pyro
 from .pyroscan import PyroScan, set_in_dict, get_from_dict
 from .pyroscan_GPE import PyroScan_GPE
@@ -14,12 +10,11 @@ class PyroScan_LHD(PyroScan_GPE):
     Latin Hypercube Designs.
 
     Member data
-    lhs_param_dict    : Dictionary of parameters and ranges used to generate LHD   [get_parameter_ranges]
+
     run_directory     : Top directory to add individual run directories to         [write]
     latin_hypercube_n : Number of points to generate                               [write]
     file_name         : Name of input file to write                                [write]
-    LHD_pyro_objects  : A collection of pyro objects for each run with output data [collate_results]
-
+    image             : Name of the docker image to be run                         [run]
     """
 
     def write(self, npoints=100, file_name='gs2.in', directory='.', template_file=None):
