@@ -29,4 +29,5 @@ from .pyro import Pyro
 from .pyroscan import PyroScan
 from .pyroscan_GPE import PyroScan_GPE
 from .pyroscan_LHD import PyroScan_LHD
+from .pyroscan_MICE import PyroScan_MICE
 from .pyroGPE import PyroGPE

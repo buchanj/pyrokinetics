@@ -8,6 +8,8 @@ from .gpe_csv import *
 # A derived pyroscan class for handling latin hypercube and sequential
 # design studies. These each have their own class derived from this.
 
+# FIXME - Set input and output name variables on initialisation. They are fixed and constant.
+
 class PyroScan_GPE(PyroScan):
     """
     A PyroScan derived class for creating and running 

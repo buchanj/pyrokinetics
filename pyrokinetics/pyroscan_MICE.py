@@ -5,7 +5,7 @@ import os
 import numpy as np
 import mogp_emulator as mogp
 
-# FIXME - make scaling optional?
+# FIXME - make scaling optional? FIXME - Make sure scaling is handled consistently. 
 # Or train a GPE at the end using the unscaled data???
 # Basically got as far as writing submission functions for initial LHD and MICE batches
 # Need to recover data and handle updating the MICE design.
@@ -173,8 +173,8 @@ class PyroScan_MICE(PyroScan_GPE):
         # Load existing data
         self.mice_design.load_design(filename)
 
-    def submit_inital_design(self,image_name='gs2_local',max_containers,n_init=124,n_cand=50,file_name='gs2.in',
-                             directory='.',template_file=None):
+    def submit_inital_design(self,image_name='gs2_local',max_containers=124,n_init=124,n_cand=50,
+                             file_name='gs2.in',directory='.',template_file=None):
         """
         Sets up and runs the initial LHD design process.
         """
