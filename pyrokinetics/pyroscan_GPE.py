@@ -23,7 +23,8 @@ class PyroScan_GPE(PyroScan):
     def __init__(self, 
                  pyro,
                  directory = './'
-                 image_name = 'gs2_local'
+                 image_name = 'gs2_local',
+                 template_file = None,
                  param_dict = None,
                  p_prime_type = 0,
                  value_fmt = '.2f',
@@ -50,6 +51,9 @@ class PyroScan_GPE(PyroScan):
 
         # Docker image name
         self.image_name = image_name
+
+        # Template input file to use
+        self.template_file = template_file
 
         # Cores to use for each GS2 run
         self.cores_per_run = cores_per_run
@@ -124,7 +128,7 @@ class PyroScan_GPE(PyroScan):
 
         return np.array(scaled_parameters)
 
-    def write_batch(self, parameters, directory='.', template_file=None):
+    def write_batch(self, parameters, directory='.'):
         """
         Creates and writes GK input files for a set of parameters (numpy array).
         Parameters is expected to be a 2D numpy array (nruns,nparams) containing
@@ -166,7 +170,7 @@ class PyroScan_GPE(PyroScan):
                 # Set the value given the dictionary and location of parameter
                 set_in_dict(param_dict, keys_to_param, scaled_parameters[run,index] )
 
-            self.pyro.write_gk_file(self.file_name, directory=run_directory, template_file=template_file)
+            self.pyro.write_gk_file(self.file_name, directory=run_directory, template_file=self.template_file)
 
     def collate_results(self, directory, nruns, wait=True):
         """
@@ -249,7 +253,11 @@ class PyroScan_GPE(PyroScan):
             inputs.append( inputs_ )
             outputs.append( outputs_ )
 
-        return np.array(inputs), np.array(outputs)
+        # Store current parameter and target values
+        self.parameters = np.array(inputs)
+        self.targets    = np.array(outputs)
+
+        return self.parameters, self.targets
         
     def create_csv(self,pyro_objects,directory,filename):
         """

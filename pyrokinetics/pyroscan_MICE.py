@@ -25,16 +25,10 @@ class PyroScan_MICE(PyroScan_GPE):
 
     """
 
-    def create_design(self, image_name='gs2_local', n_init=124, n_cand=50, file_name='gs2.in', 
-                      directory='.', template_file=None):
+    def create_design(self, n_init=124, n_cand=50):
         """
         Creates the MICE design object and writes an initial Latin Hypercube Design.
         """
-
-        self.image_name    = image_name
-        self.file_name     = file_name
-        self.run_directory = directory
-        self.template_file = template_file
 
         print(f'Creating an initial Latin Hypercube run with {n_init} points')
         self.latin_hypercube_n = n_init
@@ -49,8 +43,8 @@ class PyroScan_MICE(PyroScan_GPE):
         lhd = self.mice_design.generate_initial_design()
 
         # Write files
-        lhd_run_directory = directory + os.sep + 'batch_0'
-        super().write_batch(lhd, file_name=file_name, directory=lhd_run_directory, template_file=template_file)
+        lhd_run_directory = self.directory + os.sep + 'batch_0'
+        super().write_batch(lhd, directory=lhd_run_directory)
 
     def create_mice_batch(self, batch_number, n_batch=8):
         """
@@ -64,8 +58,8 @@ class PyroScan_MICE(PyroScan_GPE):
         batch = self.mice_design.get_batch_points( n_batch )
 
         # Write files
-        run_directory = self.run_directory + os.sep + 'batch_' + str(batch_number)
-        super().write_batch(batch, file_name=self.file_name, directory=run_directory, template_file=self.template_file)
+        run_directory = self.directory + os.sep + 'batch_' + str(batch_number)
+        super().write_batch(batch, directory=run_directory)
 
     def check_settings(self,batch_number):
         """
@@ -80,11 +74,6 @@ class PyroScan_MICE(PyroScan_GPE):
             # Check LHD size is set
             if self.latin_hypercube_n is None:
                 raise Exception('No LHD information available. Aborting.')
-
-        # Check run directory
-        if self.run_directory is None:
-            print('Run directory is unset, assuming pwd.')
-            self.run_directory = '.'
 
     def get_batch_size(self,batch_number):
         """
@@ -104,13 +93,13 @@ class PyroScan_MICE(PyroScan_GPE):
         self.check_settings(batch_number)
 
         # Run directory for this batch
-        run_directory = self.run_directory + os.sep + 'batch_' + str(batch_number)
+        run_directory = self.directory + os.sep + 'batch_' + str(batch_number)
 
         # Size of this batch
         nruns = self.get_batch_size(batch_number)
 
         # Run this batch
-        super().run(run_directory,nruns,self.image_name,max_containers)
+        super().run(run_directory,nruns,max_containers)
 
     def recover_batch_output(self,batch_number,wait=True):
         """
@@ -120,14 +109,14 @@ class PyroScan_MICE(PyroScan_GPE):
         self.check_settings(batch_number)
 
         # Run directory for this batch
-        run_directory = self.run_directory + os.sep + 'batch_' + str(batch_number)
+        run_directory = self.directory + os.sep + 'batch_' + str(batch_number)
 
         # Size of this batch
         nruns = self.get_batch_size(batch_number)
         
         super().collate_results(run_directory, nruns, filename=self.file_name, wait=wait)
 
-        # Returns input names, current inputs, output names and current outputs.
+        # Returns parameters and targets for this batch
         return super().get_parameters_and_targets(self.current_pyro_objects)
 
     def train_initial_design(self,targets):
@@ -153,16 +142,10 @@ class PyroScan_MICE(PyroScan_GPE):
 
         self.mice_design.save_design(filename)
 
-    def load_design(self, filename, image_name='gs2_local', input_filename='gs2.in', 
-                    directory='.', template_file=None):
+    def load_design(self, filename):
         """
         Loads a design from a file.
         """
-
-        self.image_name    = image_name
-        self.file_name     = input_filename
-        self.run_directory = directory
-        self.template_file = template_file
 
         # Generate a Latin Hypercube
         self.lhd = mogp.LatinHypercubeDesign( len(self.param_dict) )
@@ -173,34 +156,32 @@ class PyroScan_MICE(PyroScan_GPE):
         # Load existing data
         self.mice_design.load_design(filename)
 
-    def submit_inital_design(self,image_name='gs2_local',max_containers=124,n_init=124,n_cand=50,
-                             file_name='gs2.in',directory='.',template_file=None):
+    def submit_inital_design(self,max_containers=124, n_init=124, n_cand=50):
         """
         Sets up and runs the initial LHD design process.
         """
 
         # Create design
-        self.create_design(n_init=n_init, n_cand=n_cand, file_name=file_name, 
-                           directory=directory, template_file=template_file)
+        self.create_design(n_init=n_init, n_cand=n_cand)
 
         # Run initial batch
-        self.run_batch( 0, image_name=image_name, max_containers=max_containers )
+        self.run_batch( 0, max_containers=max_containers )
 
         # Recover initial batch 
-        input_names, inputs, output_names, outputs = self.recover_output(0)
+        inputs, outputs = self.recover_output(0)
 
         # Train initial design
         self.train_initial_design(outputs)
 
         # Write an initial CSV file
         filename = 'batch_0.csv'
-        self.create_csv(self.current_pyro_objects,directory,filename)
+        self.create_csv(self.current_pyro_objects,self.directory,filename)
 
         # Write an initial MICE file
-        filename = 'batch_0.npz'
+        filename = self.directory + os.sep + 'batch_0.npz'
         self.save_design(filename)
 
-    def submit_mice_batch(batch_number, image_name='gs2_local', n_batch=8, max_containers=124):
+    def submit_mice_batch(batch_number, n_batch=8, max_containers=124):
         """
         Submits a batch of runs generated using MICE.
         """
@@ -209,18 +190,18 @@ class PyroScan_MICE(PyroScan_GPE):
         self.create_mice_batch( batch_number, n_batch=n_batch)
 
         # Run batch
-        self.run_batch( batch_number, image_name=image_name, max_containers=max_containers )
+        self.run_batch( batch_number, max_containers=max_containers )
 
         # Recover batch 
-        input_names, inputs, output_names, outputs = self.recover_output(batch_number)
+        inputs, outputs = self.recover_output(batch_number)
 
         # Update MICE Design
         self.train_mice_batch(outputs)
 
         # Write a new CSV file
-        filename = 'batch_'+str(batch_number)+'.csv'
+        filename = self.directory + os.sep + 'batch_'+str(batch_number)+'.csv'
         self.create_csv(self.current_pyro_objects,directory,filename)
 
         # Write an new MICE file
-        filename = 'batch_'+str(batch_number)+'.npz'
+        filename =  self.directory + os.sep + 'batch_'+str(batch_number)+'.npz'
         self.save_design(filename)

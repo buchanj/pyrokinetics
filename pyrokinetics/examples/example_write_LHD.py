@@ -25,6 +25,9 @@ param_dict = {param_1: values_1,
 
 # Create PyroScan object
 pyro_scan = PyroScan_LHD(pyro,
+                         directory = './test_GS2_LHD',
+                         image_name = 'gs2_local',
+                         template_file = gs2_gile,
                          param_dict,
                          value_fmt='.3f',
                          value_separator='_',
@@ -33,9 +36,4 @@ pyro_scan = PyroScan_LHD(pyro,
 
 pyro_scan.add_parameter_key(param_2, 'local_species', ['electron', 'a_lt'])
 
-pyro_scan.write(npoints=248, directory='test_GS2_LHD', template_file=gs2_file)
-
-image_name     = 'gs2_local'
-max_containers = 124 
-
-pyro_scan.run_docker_local(image_name,max_containers)
+pyro_scan.submit(npoints=248, max_containers=124, wait=False)
