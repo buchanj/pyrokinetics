@@ -37,7 +37,7 @@ class PyroScan_MICE(PyroScan_GPE):
         self.lhd = mogp.LatinHypercubeDesign( len(self.param_dict) )
 
         # Initialise MICE sequential design
-        self.mice_design = mogp.MICEDesign( lhd, n_init=n_init, n_cand=n_cand )
+        self.mice_design = mogp.MICEDesign( self.lhd, n_init=n_init, n_cand=n_cand )
 
         # Initial Design
         lhd = self.mice_design.generate_initial_design()
@@ -114,7 +114,7 @@ class PyroScan_MICE(PyroScan_GPE):
         # Size of this batch
         nruns = self.get_batch_size(batch_number)
         
-        super().collate_results(run_directory, nruns, filename=self.file_name, wait=wait)
+        super().collate_results(run_directory, nruns, wait=wait)
 
         # Returns parameters and targets for this batch
         return super().get_parameters_and_targets(self.current_pyro_objects)
@@ -170,8 +170,8 @@ class PyroScan_MICE(PyroScan_GPE):
         # Recover initial batch 
         inputs, outputs = self.recover_batch_output(0)
 
-        # Train initial design
-        self.train_initial_design(outputs)
+        # Train initial design on growth rates
+        self.train_initial_design(np.transpose(outputs)[1])
 
         # Write an initial CSV file
         filename = 'batch_0.csv'
@@ -187,7 +187,7 @@ class PyroScan_MICE(PyroScan_GPE):
         """
 
         # Set up files for batch of runs
-        self.create_mice_batch( batch_number, n_batch=n_batch)
+        self.create_mice_batch( batch_number, n_batch=n_batch )
 
         # Run batch
         self.run_batch( batch_number, max_containers=max_containers )
@@ -195,8 +195,8 @@ class PyroScan_MICE(PyroScan_GPE):
         # Recover batch 
         inputs, outputs = self.recover_batch_output(batch_number)
 
-        # Update MICE Design
-        self.train_mice_batch(outputs)
+        # Update MICE Design on new growth rates
+        self.train_mice_batch(np.transpose(outputs)[1])
 
         # Write a new CSV file
         filename = self.directory + os.sep + 'batch_'+str(batch_number)+'.csv'
