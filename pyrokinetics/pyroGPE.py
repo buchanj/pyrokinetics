@@ -153,12 +153,10 @@ class PyroGPE:
         """
 
         self.parameter_names   = mice_design.parameter_names
-
-        # MICE parameters are on [0:1] - Rescale them to domain
-        self.parameter_values  = mice_design.scale_parameters(mice_design.parameters)
+        self.parameter_values  = mice_design.parameters
         
         self.target_names      = mice_design.target_names
-        self.target_values     = mice_design.get_targets()
+        self.target_values     = mice_design.targets
         
         self.training_n = self.parameter_values.shape[0]
         print('Loaded '+str(self.training_n)+' data items from CSV file.\n')

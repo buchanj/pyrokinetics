@@ -130,7 +130,7 @@ def run_mice_workflow(gs2_template, param_dict, directory, image_name='gs2_local
     # Perform validation using initial LHD
     freq_rms_error, gamma_rms_error, freq_zs, gamma_zs = pyro_gpe.leave_one_out_cross_validate()
 
-    filename = directory + os.step + 'loocv.csv'
+    filename = directory + os.sep + 'loocv.csv'
     pyro_gpe.write_validation_data( 0, filename, freq_rms_error, gamma_rms_error )
 
     # Perform validation against LHD
@@ -145,7 +145,7 @@ def run_mice_workflow(gs2_template, param_dict, directory, image_name='gs2_local
     while iteration <= n_iterations:
 
         # Submit a batch 
-        pyro_scan.submit_mice_batch(iteration, n_batch=n_batch, max_containers=124)
+        pyro_scan.submit_mice_batch(iteration, n_batch=n_batch, max_containers=max_containers)
 
         # Train a new GPE using updated data
         pyro_gpe.load_training_data_from_mice(pyro_scan)
@@ -154,7 +154,7 @@ def run_mice_workflow(gs2_template, param_dict, directory, image_name='gs2_local
         # Perform validation using initial LHD
         freq_rms_error, gamma_rms_error, freq_zs, gamma_zs = pyro_gpe.leave_one_out_cross_validate()
 
-        filename = directory + os.step + 'loocv.csv'
+        filename = directory + os.sep + 'loocv.csv'
         pyro_gpe.write_validation_data( iteration, filename, freq_rms_error, gamma_rms_error )
 
         # Perform validation against LHD
@@ -164,6 +164,8 @@ def run_mice_workflow(gs2_template, param_dict, directory, image_name='gs2_local
 
             filename = directory + os.step + 'validation.csv'
             pyro_gpe.write_validation_data( iteration, filename, freq_rms_error, gamma_rms_error )
+
+        iteration = iteration + 1
 
     return pyro_scan, pyro_gpe
 
@@ -218,11 +220,11 @@ if __name__ == '__main__':
 
     # Specify a maximum number of containers to use
     helpstr = "Sets the maximum number of containers"
-    parser.add_argument("-c", "--max_containers", default=124, help=helpstr)
+    parser.add_argument("-c", "--max_containers", type=int, default=124, help=helpstr)
 
     # Wait for completion
     helpstr = "Waits for an LHD run to complete and aggregates data."
-    parser.add_argument("-w", "--wait", default=True, help=helpstr)
+    parser.add_argument("-w", "--wait", type=bool, default=True, help=helpstr)
 
     # Train a GPE on the LHD and cross validate
     helpstr = "Set True to train a GPE on the LHD and perform Leave One Out Cross Validation."
@@ -234,15 +236,15 @@ if __name__ == '__main__':
 
     # Number of candidate points to use when running MICE
     helpstr = "Sets the number of candidate points to use for a MICE workflow."
-    parser.add_argument("-nc", "--n_cand", default=50, help=helpstr)
+    parser.add_argument("-nc", "--n_cand", default=50, type=int, help=helpstr)
 
     # Number of batch points per MICE iteration
     helpstr = "Sets the number of batch points to use for a MICE workflow."
-    parser.add_argument("-nb", "--n_batch", default=20, help=helpstr)
+    parser.add_argument("-nb", "--n_batch", default=20, type=int, help=helpstr)
 
     # Number of MICE iterations to perform
     helpstr = "Sets the number of iterations to use for a MICE workflow."
-    parser.add_argument("-it", "--iterations", default=10, help=helpstr)
+    parser.add_argument("-it", "--iterations", type=int, default=10, help=helpstr)
     
     # Test mode
     helpstr = "Run a test - doesn't run containers, just returns 0,1 for freq and gamma."

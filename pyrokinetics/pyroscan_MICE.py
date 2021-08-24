@@ -181,7 +181,7 @@ class PyroScan_MICE(PyroScan_GPE):
         filename = self.directory + os.sep + 'batch_0.npz'
         self.save_design(filename)
 
-    def submit_mice_batch(batch_number, n_batch=8, max_containers=124):
+    def submit_mice_batch(self, batch_number, n_batch=8, max_containers=124):
         """
         Submits a batch of runs generated using MICE.
         """
@@ -199,8 +199,8 @@ class PyroScan_MICE(PyroScan_GPE):
         self.train_mice_batch(np.transpose(outputs)[1])
 
         # Write a new CSV file
-        filename = self.directory + os.sep + 'batch_'+str(batch_number)+'.csv'
-        self.create_csv(self.current_pyro_objects,directory,filename)
+        filename = 'batch_'+str(batch_number)+'.csv'
+        self.create_csv(self.current_pyro_objects,self.directory,filename)
 
         # Write an new MICE file
         filename =  self.directory + os.sep + 'batch_'+str(batch_number)+'.npz'
