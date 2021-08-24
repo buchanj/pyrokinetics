@@ -32,7 +32,8 @@ class PyroScan_GPE(PyroScan):
                  parameter_separator = '/',
                  file_name = None,
                  load_default_parameter_keys = True,
-                 cores_per_run = 1):
+                 cores_per_run = 1,
+                 test_mode = False):
         """
         Initialises some variables
         """
@@ -70,6 +71,12 @@ class PyroScan_GPE(PyroScan):
         # Parameter and target names
         self.parameter_names  = list(self.param_dict.keys())
         self.target_names     = ['mode_frequency','growth_rate']
+
+        # Is this a test?
+        self.test_mode = test_mode
+
+        # Load default parameter keys
+        self.load_default_parameter_keys()
 
     def get_parameter_and_target_names():
         """
@@ -179,7 +186,7 @@ class PyroScan_GPE(PyroScan):
         runs to read.
         """
 
-        if wait:
+        if wait and not self.test_mode:
             wait_until_finished(self.image_name)
 
         self.current_pyro_objects = []
@@ -201,9 +208,10 @@ class PyroScan_GPE(PyroScan):
             pyro = Pyro(gk_file=run_input_file, gk_type='GS2')
 
             # Read output data
-            pyro.gk_code.load_grids(pyro)
-            pyro.gk_code.load_fields(pyro)
-            pyro.gk_code.load_eigenvalues(pyro)
+            if not self.test_mode:
+                pyro.gk_code.load_grids(pyro)
+                pyro.gk_code.load_fields(pyro)
+                pyro.gk_code.load_eigenvalues(pyro)
 
             # Add this pyro object to lists
             self.current_pyro_objects.append(pyro)
@@ -239,16 +247,21 @@ class PyroScan_GPE(PyroScan):
                 inputs_.append(value)
 
             # Get frequency and growth rate
-            output_data = pyro.gk_output.data
+            if not self.test_mode:
 
-            frequency   = output_data['mode_frequency']
-            growth_rate = output_data['growth_rate']
+                output_data = pyro.gk_output.data
+                
+                frequency   = output_data['mode_frequency']
+                growth_rate = output_data['growth_rate']
+                
+                # FIXME - probably want some final time averaging here!
+                # Create a separate function for extracting frequency and growth rate.
+                outputs_ = []
+                outputs_.append( np.real( frequency.isel(  time=-1).data[0] ) )
+                outputs_.append( np.real( growth_rate.isel(time=-1).data[0] ) )
 
-            # FIXME - probably want some final time averaging here!
-            # Create a separate function for extracting frequency and growth rate.
-            outputs_ = []
-            outputs_.append( np.real( frequency.isel(  time=-1).data[0] ) )
-            outputs_.append( np.real( growth_rate.isel(time=-1).data[0] ) )
+            else:
+                outputs_ = [ 0.0, 1.0 ]
 
             inputs.append( inputs_ )
             outputs.append( outputs_ )
@@ -275,6 +288,9 @@ class PyroScan_GPE(PyroScan):
         """ 
         Submits a set of containerised GS2 runs prepared in <directory>.
         """
+
+        if self.test_mode:
+            return
 
         # Submit container when cores are available
         run_docker_local(directory,nruns,self.cores_per_run,self.image_name,max_containers)
