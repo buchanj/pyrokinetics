@@ -148,6 +148,9 @@ class PyroGPE:
         print('Loaded '+str(self.training_n)+' data items from CSV file.\n')
 
     def load_training_data_from_mice(self,mice_design):
+        """
+        Loads data from a pyroscan_MICE object.
+        """
 
         self.parameter_names   = mice_design.parameter_names
 
@@ -425,3 +428,10 @@ class PyroGPE:
         gamma_rms_error     =     gamma_rms_error / ( maxima[1] - minima[1] )
 
         return frequency_rms_error, gamma_rms_error, frequency_zs, gamma_zs
+
+    def write_validation_data( self, iteration, filename, freq_rms_error, growth_rate_rms_error ):
+        """
+        Just a wrapper to the corresponding function in gpe_csv.
+        """
+        
+        write_validation_data( iteration, filename, freq_rms_error, growth_rate_rms_error )

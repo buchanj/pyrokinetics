@@ -58,3 +58,26 @@ def read_csv(csvfile,n_outputs=2):
             target_values.append(   [ float(x) for x in row[-1*n_outputs:] ])
 
     return parameter_names, np.array(parameter_values), target_names, np.array(target_values)
+
+def write_validation_data( iteration, filename, freq_rms_error, growth_rate_rms_error ):
+    """
+    Writes some validation data out to a file.
+    """
+
+    if os.path.exists(filename):
+        append_write = 'a' # append if already exists
+    else:
+        append_write = 'w' # make a new file if not
+
+    with open( filename, append_write ) as csvfile:
+
+        csvwriter = csv.writer(csvfile, delimiter=',')
+
+        # Create a header line
+        if iteration == 0:
+            headers = [ 'batch', 'freq rms error', 'growth rate rms error' ]
+            csvwriter.writerow(headers)
+
+        # Write line
+        data = np.array( [ iteration, freq_rms_error, growth_rate_rms_error ] )
+        csvwriter.writerow(data)
