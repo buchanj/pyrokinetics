@@ -340,8 +340,11 @@ class PyroGPE:
         minima = np.amin( targets, 0 )
         maxima = np.amax( targets, 0 )
 
-        frequency_rms_error = frequency_rms_error / ( maxima[0] - minima[0] )
-        gamma_rms_error     =     gamma_rms_error / ( maxima[1] - minima[1] )
+        if ( maxima[0] - minima[0] ) != 0:
+            frequency_rms_error = frequency_rms_error / ( maxima[0] - minima[0] )
+
+        if ( maxima[1] - minima[1] ) != 0:
+            gamma_rms_error     =     gamma_rms_error / ( maxima[1] - minima[1] )
 
         return frequency_rms_error, gamma_rms_error, frequency_zs, gamma_zs   
 
@@ -424,8 +427,11 @@ class PyroGPE:
         minima = np.amin( self.target_values, 0 )
         maxima = np.amax( self.target_values, 0 )
 
-        frequency_rms_error = frequency_rms_error / ( maxima[0] - minima[0] )
-        gamma_rms_error     =     gamma_rms_error / ( maxima[1] - minima[1] )
+        if ( maxima[0] - minima[0] ) != 0:
+            frequency_rms_error = frequency_rms_error / ( maxima[0] - minima[0] )
+
+        if ( maxima[1] - minima[1] ) != 0:
+            gamma_rms_error     =     gamma_rms_error / ( maxima[1] - minima[1] )
 
         return frequency_rms_error, gamma_rms_error, frequency_zs, gamma_zs
 
