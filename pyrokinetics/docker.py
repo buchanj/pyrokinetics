@@ -55,11 +55,11 @@ def submit_container(image_name,run_directory,cores_per_run):
     mode. Assumes the container is set up to awaken in /tmp/work_dir as for the VVeb.UQ app
     """
 
-    # FIXME - Set this up so cores_per_run is passed to docker container. 
+    # Pass cores_per_run as an environment variable to docker
 
     abs_run_directory = get_absolute_path(run_directory)
 
-    command = 'docker run -v ' + abs_run_directory + ':/tmp/work_dir -d '+ image_name
+    command = 'docker run -v ' + abs_run_directory + ':/tmp/work_dir -d '+ image_name + ' --env GS2_CPUS=' + str(cores_per_run)
     print('Submitting container in directory ' + abs_run_directory)
     os.system(command)
     print('Submitted')

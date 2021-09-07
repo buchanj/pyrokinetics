@@ -4,7 +4,7 @@ import numpy as np
 import argparse
 
 def run_lhd_workflow(gs2_template, param_dict, npoints, directory, image_name='gs2_local',
-                     max_containers=124, wait=True, test_mode=False):
+                     max_containers=124, wait=True, test_mode=False, cores_per_run=1):
     """
     Generates, submit an LHD workflow.
     Also recovers and saves an LHD object if wait is true.
@@ -15,6 +15,7 @@ def run_lhd_workflow(gs2_template, param_dict, npoints, directory, image_name='g
     npoints        : Number of points to sample
     max_containers : Maximum number of containers to run simultaneously.
     test_mode      : Sets test mode (No containers)
+    cores_per_run  : Number of cores to use per job
 
     """
 
@@ -30,7 +31,8 @@ def run_lhd_workflow(gs2_template, param_dict, npoints, directory, image_name='g
                              value_fmt='.3f',
                              value_separator='_',
                              parameter_separator='_',
-                             test_mode = test_mode
+                             test_mode = test_mode,
+                             cores_per_run = cores_per_run
                          )
 
     pyro_scan.submit(npoints=npoints, max_containers=max_containers, wait=wait)
@@ -38,7 +40,7 @@ def run_lhd_workflow(gs2_template, param_dict, npoints, directory, image_name='g
     return pyro_scan
 
 def run_lhd_gpe_workflow(gs2_template, param_dict, npoints, directory, image_name='gs2_local',
-                         max_containers=124, test_mode=False):
+                         max_containers=124, test_mode=False, cores_per_run=1):
     """
     Generates and submit an LHD workflow. Then trains a GPE on the result and performs
     Leave One Out Cross Validation.
@@ -49,11 +51,12 @@ def run_lhd_gpe_workflow(gs2_template, param_dict, npoints, directory, image_nam
     npoints        : Number of points to sample
     max_containers : Maximum number of containers to run simultaneously.
     test_mode      : Sets test mode (No containers)
+    cores_per_run  : Number of cores to use per job
 
     """
 
     pyro_scan = run_lhd_workflow(gs2_template, param_dict, npoints, directory, image_name=image_name,
-                                 max_containers=max_containers, test_mode=test_mode)
+                                 max_containers=max_containers, test_mode=test_mode, cores_per_run=cores_per_run)
 
     # Train a GPE using the stored data
     pyro_gpe = PyroGPE()
@@ -84,22 +87,25 @@ def run_lhd_gpe_workflow(gs2_template, param_dict, npoints, directory, image_nam
 
 def run_mice_workflow(gs2_template, param_dict, directory, image_name='gs2_local',
                       max_containers=124, n_init=124, n_cand=50, n_batch=20, 
-                      n_iterations=10, validation_lhd=None, test_mode=False):
+                      n_iterations=10, validation_lhd=None, test_mode=False,
+                      cores_per_run_lhd=1, cores_per_run_mice=1):
 
     """
     Submits a MICE workflow
     
-    gs2_template   : Template input file to base LHD on
-    param_dict     : dictionary of parameter ranges to sample 
-                     Each entry must be param_name : np.array([min_val, max_val])
-    directory      : Top level directory name to store data
-    image_name     : Name of docker image to run
-    max_containers : Maximum number of containers to run simultaneously.
-    n_init         : Size of initial LHD 
-    n_batch        : Size of each batch of MICE runs
-    n_cand         : Number of candidate points to use when running MICE
-    n_iterations   : Number of MICE iterations to make
-    validate       : An LHD to cross validate against
+    gs2_template       : Template input file to base LHD on
+    param_dict         : dictionary of parameter ranges to sample 
+                         Each entry must be param_name : np.array([min_val, max_val])
+    directory          : Top level directory name to store data
+    image_name         : Name of docker image to run
+    max_containers     : Maximum number of containers to run simultaneously.
+    n_init             : Size of initial LHD 
+    n_batch            : Size of each batch of MICE runs
+    n_cand             : Number of candidate points to use when running MICE
+    n_iterations       : Number of MICE iterations to make
+    validate           : An LHD to cross validate against
+    cores_per_run_lhd  : The number of cores per job for the initial LHD design
+    cores_per_run_mice : The number of cores per job for the mice batches
 
     """
 
@@ -115,7 +121,8 @@ def run_mice_workflow(gs2_template, param_dict, directory, image_name='gs2_local
                               value_fmt='.3f',
                               value_separator='_',
                               parameter_separator='_',
-                              test_mode = test_mode
+                              test_mode = test_mode,
+                              cores_per_run = cores_per_run_lhd  # Initialise to LHD core count
                           )
 
     # Generate and run initial LHD 
@@ -140,6 +147,11 @@ def run_mice_workflow(gs2_template, param_dict, directory, image_name='gs2_local
 
         filename = directory + os.step + 'validation.csv'
         pyro_gpe.write_validation_data( 0, filename, freq_rms_error, gamma_rms_error )
+
+    # Perform batches of MICE runs ==================================
+
+    # Update cores_per_run
+    pyro_scan.cores_per_run = cores_per_run_mice
 
     iteration = 1
     while iteration <= n_iterations:
@@ -262,18 +274,19 @@ if __name__ == '__main__':
         run_mice_workflow(args.template, param_dict, args.dir, image_name=args.image,
                           max_containers=args.max_containers, n_init=args.npoints, 
                           n_cand=args.n_cand, n_batch=args.n_batch, n_iterations=args.iterations, 
-                          validation_lhd=None,test_mode=args.test_mode)
+                          validation_lhd=None,test_mode=args.test_mode, cores_per_run_lhd=args.ncores_lhd, 
+                          cores_per_run_mice=args.ncores_mice)
             
     else:
 
         if args.gpe:
 
             run_lhd_gpe_workflow(args.template, param_dict, args.npoints, args.dir, image_name=args.image,
-                                 max_containers=args.max_containers, test_mode=args.test_mode)
+                                 max_containers=args.max_containers, test_mode=args.test_mode, cores_per_run=args.ncores_lhd)
 
         else:
             
             run_lhd_workflow(args.template, param_dict, args.npoints, args.dir, image_name=args.image,
-                             max_containers=args.max_containers, wait=args.wait, test_mode=args.test_mode)
+                             max_containers=args.max_containers, wait=args.wait, test_mode=args.test_mode, cores_per_run=args.ncores_lhd)
 
 
