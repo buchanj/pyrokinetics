@@ -293,4 +293,4 @@ class PyroScan_GPE(PyroScan):
             return
 
         # Submit container when cores are available
-        run_docker_local(directory,nruns,self.cores_per_run,self.image_name,max_containers)
+        run_docker_local(directory,self.file_name,nruns,self.cores_per_run,self.image_name,max_containers)

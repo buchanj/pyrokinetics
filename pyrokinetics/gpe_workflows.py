@@ -216,7 +216,7 @@ if __name__ == '__main__':
 
     # Specify the GS2 template namelist file to use.  
     helpstr = "Specify an template input namelist to use"
-    parser.add_argument("-t", "--template", default='gs2.in', help=helpstr)
+    parser.add_argument("-t", "--template", default='input.in', help=helpstr)
 
     # Specify the number of points to use for an LHD
     helpstr = "Specify the number of points to use for an LHD."

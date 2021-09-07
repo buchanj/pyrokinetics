@@ -49,17 +49,19 @@ def get_absolute_path(run_directory):
 
     return os.path.abspath(run_directory)
 
-def submit_container(image_name,run_directory,cores_per_run):
+def submit_container(image_name,run_directory,file_name,cores_per_run):
     """
     Submits a container of the given image name in the specified run directory in detached
     mode. Assumes the container is set up to awaken in /tmp/work_dir as for the VVeb.UQ app
     """
 
-    # Pass cores_per_run as an environment variable to docker
+    # Pass cores_per_run and input filename as environments variable to docker
 
     abs_run_directory = get_absolute_path(run_directory)
 
-    command = 'docker run -v ' + abs_run_directory + ':/tmp/work_dir -d '+ image_name + ' --env GS2_CPUS=' + str(cores_per_run)
+    command = 'docker run -v ' + abs_run_directory + ':/tmp/work_dir -d '+ image_name + ' --env GS2_CPUS=' + str(cores_per_run) + \
+              ' --env INPUT_FILE=' + str(file_name) 
+    
     print('Submitting container in directory ' + abs_run_directory)
     os.system(command)
     print('Submitted')
@@ -89,12 +91,13 @@ def can_run_container(image_name,cores_per_run, max_containers):
     else:
         return False
 
-def run_docker_local(directory,nruns,cores_per_run,image_name,max_containers):
+def run_docker_local(directory,file_name,nruns,cores_per_run,image_name,max_containers):
     """ 
     Submits a set of containerised GS2 runs in a folder.
     Currently assumes each run is a single core run.
 
     directory : Top level directory name to generate iteration folders in. (iteration_#)
+    file_name : Name of the gs2 input file
     nruns     : Number of runs to generate
     cores_per_run : Number of cores used by each run (used to determine whether another container can run)
     image_name    : Name of docker image to run in each folder
@@ -116,7 +119,7 @@ def run_docker_local(directory,nruns,cores_per_run,image_name,max_containers):
 
                 if( can_run ):
 
-                    submit_container(image_name,run_directory,cores_per_run)
+                    submit_container(image_name,run_directory,file_name,cores_per_run)
                     break
 
                 else:
