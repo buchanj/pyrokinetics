@@ -59,8 +59,8 @@ def submit_container(image_name,run_directory,file_name,cores_per_run):
 
     abs_run_directory = get_absolute_path(run_directory)
 
-    command = 'docker run -v ' + abs_run_directory + ':/tmp/work_dir -d '+ image_name + ' --env GS2_CPUS=' + str(cores_per_run) + \
-              ' --env INPUT_FILE=' + str(file_name) 
+    command = 'docker run -v ' + abs_run_directory + ':/tmp/work_dir -d --env GS2_CPUS=' + str(cores_per_run) + \
+              ' --env INPUT_FILE=' + str(file_name) + ' ' + image_name
     
     print('Submitting container in directory ' + abs_run_directory)
     os.system(command)
