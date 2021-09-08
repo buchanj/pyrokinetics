@@ -179,7 +179,21 @@ class PyroScan_GPE(PyroScan):
 
             self.pyro.write_gk_file(self.file_name, directory=run_directory, template_file=self.template_file)
 
-    def collate_results(self, directory, nruns, wait=True):
+    def get_iteration_count(self,directory):
+        """
+        Counts the number of iterations in a directory. The iteration directories are
+        assumed to have a name of the form iteration_x where x is an integer. 
+        This is needed when collating results.
+        """
+
+        nruns = 0
+        for root, dirs, files in os.walk(directory, topdown=False):
+            subdirs = [ x for x in dirs if 'iteration_' in x ]
+            nruns += len(subdirs)
+
+        return nruns
+
+    def collate_results(self, directory, wait=True):
         """
         Appends data from completed runs stored in <directory>
         into a set of pyro objects. nruns is the number of 
@@ -193,6 +207,9 @@ class PyroScan_GPE(PyroScan):
 
         if self.all_pyro_objects is None:
             self.all_pyro_objects = []
+
+        # Get number of iterations in directory
+        nruns = self.get_iteration_count(directory)
 
         # Iterate through all runs and recover output
         for run in range(nruns):

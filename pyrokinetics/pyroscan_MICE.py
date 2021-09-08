@@ -114,7 +114,7 @@ class PyroScan_MICE(PyroScan_GPE):
         # Size of this batch
         nruns = self.get_batch_size(batch_number)
         
-        super().collate_results(run_directory, nruns, wait=wait)
+        super().collate_results(run_directory, wait=wait)
 
         # Returns parameters and targets for this batch
         return super().get_parameters_and_targets(self.current_pyro_objects)

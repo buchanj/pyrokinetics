@@ -72,7 +72,7 @@ class PyroScan_LHD(PyroScan_GPE):
         if wait:
 
             # Recover output data
-            self.collate_results(self.directory, self.latin_hypercube_n)
+            self.collate_results(self.directory)
 
             inputs, output = self.get_parameters_and_targets(self.current_pyro_objects)
 

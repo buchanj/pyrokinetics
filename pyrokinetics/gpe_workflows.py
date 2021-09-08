@@ -3,6 +3,35 @@ import os
 import numpy as np
 import argparse
 
+def load_validation_lhd(gs2_template, param_dict, directory):
+    """
+    Handles loading a saved LHD to use for validation.
+    
+    gs2_template   : Template input file to base LHD on
+    param_dict     : dictionary of parameter ranges to sample 
+                     Each entry must be param_name : np.array([min_val, max_val])
+    directory      : The top directory for the LHD run. This is the directory containing
+                     the iteration_# subdirectories.
+    """
+
+    # Load up pyro object
+    pyro = Pyro(gk_file=gs2_template, gk_type='GS2')
+
+    # Create PyroScan object
+    pyro_scan = PyroScan_LHD(pyro,
+                             directory = directory,
+                             template_file = gs2_template,
+                             param_dict = param_dict,
+                             value_fmt='.3f',
+                             value_separator='_',
+                             parameter_separator='_',
+                         )
+
+    # Collate data from directory
+    pyro_scan.collate_results(directory, wait=False)
+
+    return pyro_scan
+
 def run_lhd_workflow(gs2_template, param_dict, npoints, directory, image_name='gs2_local',
                      max_containers=124, wait=True, test_mode=False, cores_per_run=1):
     """
@@ -257,6 +286,10 @@ if __name__ == '__main__':
     # Number of MICE iterations to perform
     helpstr = "Sets the number of iterations to use for a MICE workflow."
     parser.add_argument("-it", "--iterations", type=int, default=10, help=helpstr)
+
+    # Specify the top level directory containing an LHD run for validation
+    helpstr = "Specifies a directory containing an LHD run for validataion."
+    parser.add_argument("-v", "--vdir", default=None, help=helpstr)
     
     # Test mode
     helpstr = "Run a test - doesn't run containers, just returns 0,1 for freq and gamma."
@@ -269,14 +302,17 @@ if __name__ == '__main__':
 
     if args.mice:
 
-        # FIXME - Handle validation lhd
+        # Load validation LHD if needed
+        validation_lhd = None
+        if args.vdir is not None:
+            validation_lhd = load_validation_lhd(args.template, param_dict, args.vdir)
 
         run_mice_workflow(args.template, param_dict, args.dir, image_name=args.image,
                           max_containers=args.max_containers, n_init=args.npoints, 
                           n_cand=args.n_cand, n_batch=args.n_batch, n_iterations=args.iterations, 
-                          validation_lhd=None,test_mode=args.test_mode, cores_per_run_lhd=args.ncores_lhd, 
-                          cores_per_run_mice=args.ncores_mice)
-            
+                          validation_lhd=validation_lhd, test_mode=args.test_mode, 
+                          cores_per_run_lhd=args.ncores_lhd, cores_per_run_mice=args.ncores_mice)
+
     else:
 
         if args.gpe:

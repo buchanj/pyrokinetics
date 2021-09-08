@@ -123,7 +123,7 @@ class PyroGPE:
         if lhd.parameters is None:
 
             # Recover output data
-            lhd.collate_results(lhd.directory, lhd.latin_hypercube_n)
+            lhd.collate_results(lhd.directory)
             lhd.get_parameters_and_targets(lhd.current_pyro_objects)
 
         self.parameter_names   = lhd.parameter_names
