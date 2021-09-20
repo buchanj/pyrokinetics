@@ -27,7 +27,7 @@ class CGYRO(GKCode):
 
     def read(self, pyro, data_file=None, template=False):
         """
-        Reads CGYRO input file into a dictionary
+        Reads a CGYRO input file and loads pyro object with the data
         """
         if template and data_file is None:
             data_file = self.base_template_file
@@ -58,7 +58,8 @@ class CGYRO(GKCode):
 
     def load_pyro(self, pyro):
         """
-        Loads CGYRO dictions into Pyro object
+        Loads LocalSpecies, LocalGeometry, Numerics classes from pyro.cgyro_input
+
         """
 
         # Geometry
@@ -95,7 +96,7 @@ class CGYRO(GKCode):
 
     def write(self, pyro, file_name, directory='.'):
         """
-        For a given pyro object write a CGYRO input file
+        Write a CGYRO input file from a pyro object
 
         """
 
@@ -170,6 +171,15 @@ class CGYRO(GKCode):
         # Numerics
         numerics = pyro.numerics
 
+        if numerics.bpar and not numerics.apar:
+            raise ValueError("Can't have bpar without apar in CGYRO")
+
+        cgyro_input['N_FIELD'] = 1 + int(numerics.bpar) + int(numerics.apar)
+
+        # Set time stepping
+        cgyro_input["DELTA_T"] = numerics.delta_time
+        cgyro_input["MAX_TIME"] = numerics.max_time
+
         if numerics.nonlinear:
             cgyro_input['NONLINEAR_FLAG'] = 1
             cgyro_input['N_RADIAL'] = numerics.nkx
@@ -195,7 +205,7 @@ class CGYRO(GKCode):
 
     def cgyro_parser(self, data_file):
         """
-        Parse CGYRO input file to dict
+        Parse CGYRO input file to a dictonary
         """
         import re
 
@@ -229,7 +239,7 @@ class CGYRO(GKCode):
 
     def to_file(self, cgyro_dict, filename, float_format='', directory='.'):
         """
-        Writes input file for cgyro from cgyro_dict
+        Writes input file for CGYRO from a dictionary
 
         """
         if not os.path.exists(directory):
@@ -250,7 +260,7 @@ class CGYRO(GKCode):
 
     def load_local_geometry(self, pyro, cgyro):
         """
-        Loads local geometry
+        Loads LocalGeometry class from pyro.cgyro_input
         """
 
         if pyro.local_geometry_type == 'Miller':
@@ -258,7 +268,7 @@ class CGYRO(GKCode):
 
     def load_miller(self, pyro, cgyro):
         """
-        Load Miller object from CGYRO input file
+        Loads Miller class from pyro.cgyro_input
         """
 
         # Set some defaults here
@@ -288,7 +298,7 @@ class CGYRO(GKCode):
 
     def load_local_species(self, pyro, cgyro):
         """
-        Load local_species from CGYRO input file
+        Load LocalSpecies object from pyro.gene_input
         """
 
         nspec = cgyro['N_SPECIES']
@@ -414,6 +424,15 @@ class CGYRO(GKCode):
 
         numerics = Numerics()
 
+        nfields = cgyro['N_FIELD']
+
+        numerics.phi = nfields >= 1
+        numerics.apar = nfields >= 2
+        numerics.bpar = nfields >= 3
+
+        numerics.delta_time = cgyro.get("DELTA_T", 0.01)
+        numerics.max_time = cgyro.get("MAX_TIME", 1.0)
+
         numerics.ky = cgyro['KY']
 
         try:
@@ -490,10 +509,7 @@ class CGYRO(GKCode):
     def load_grids(self, pyro):
 
         """
-        Loads CGYRO grids to GKOutput
-
-        out.cgyro.grids stores all the grid data in one long 1D array
-        Output is in a standardised order
+        Loads CGYRO grids to GKOutput.data as Dataset
 
         """
 
@@ -612,7 +628,7 @@ class CGYRO(GKCode):
     def load_fields(self, pyro):
         """
         Loads 3D fields into GKOutput.data DataSet
-        fields (field, theta, kx, ky, time)
+        pyro.gk_output.data['fields'] = fields(field, theta, kx, ky, time)
         """
 
         gk_output = pyro.gk_output
@@ -691,7 +707,9 @@ class CGYRO(GKCode):
     def load_fluxes(self, pyro):
         """
         Loads fluxes into GKOutput.data DataSet
+        pyro.gk_output.data['fluxes'] = fluxes(species, moment, field, ky, time)
         """
+
         gk_output = pyro.gk_output
         data = gk_output.data
 
@@ -712,6 +730,10 @@ class CGYRO(GKCode):
     def load_eigenvalues(self, pyro):
         """
         Loads eigenvalues into GKOutput.data DataSet
+        pyro.gk_output.data['eigenvalues'] = eigenvalues(ky, time)
+        pyro.gk_output.data['mode_frequency'] = mode_frequency(ky, time)
+        pyro.gk_output.data['growth_rate'] = growth_rate(ky, time)
+
         """
 
         gk_output = pyro.gk_output
@@ -747,9 +769,10 @@ class CGYRO(GKCode):
             self.get_growth_rate_tolerance(pyro)
 
     def load_eigenfunctions(self, pyro, no_fields=False):
-
         """
         Loads eigenfunctions into GKOutput.data Dataset
+        pyro.gk_output.data['eigenfunctions'] = eigenvalues(field, theta, time)
+
         """
 
         gk_output = pyro.gk_output

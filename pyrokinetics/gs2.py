@@ -121,10 +121,12 @@ class GS2(GKCode):
 
             shat = miller.shat
             # Assign Miller values to input file
-            pyro_gs2_miller = self.pyro_to_gs2_miller()
+            pyro_gs2_miller = self.pyro_to_code_miller()
 
             for key, val in pyro_gs2_miller.items():
                 gs2_input[val[0]][val[1]] = miller[key]
+
+            gs2_input['theta_grid_parameters']['tripri'] = miller['s_delta'] / miller.rho
 
         else:
             raise NotImplementedError(f'Writing {pyro.local_geometry_type} for GS2 not supported yet')
@@ -133,7 +135,7 @@ class GS2(GKCode):
         local_species = pyro.local_species
         gs2_input['species_knobs']['nspec'] = local_species.nspec
 
-        pyro_gs2_species = self.pyro_to_gs2_species()
+        pyro_gs2_species = self.pyro_to_code_species()
 
         for iSp, name in enumerate(local_species.names):
 
@@ -179,6 +181,15 @@ class GS2(GKCode):
         # Numerics
         numerics = pyro.numerics
 
+        # Set no. of fields
+        gs2_input['knobs']['fphi'] = 1.0 if numerics.phi else 0.0
+        gs2_input['knobs']['fapar'] = 1.0 if numerics.apar else 0.0
+        gs2_input['knobs']['fbpar'] = 1.0 if numerics.bpar else 0.0
+
+        # Set time stepping
+        gs2_input['knobs']['delt'] = numerics.delta_time * sqrt2
+        gs2_input['knobs']['nstep'] = int(numerics.max_time / numerics.delta_time)
+
         if numerics.nky == 1:
             gs2_input['kt_grids_knobs']['grid_option'] = 'single'
 
@@ -211,7 +222,7 @@ class GS2(GKCode):
         gs2_input['theta_grid_parameters']['ntheta'] = numerics.ntheta
 
         gs2_input['le_grids_knobs']['negrid'] = numerics.nenergy
-        gs2_input['le_grids_knobs']['ngauss'] = numerics.npitch
+        gs2_input['le_grids_knobs']['ngauss'] = numerics.npitch // 2
 
         if numerics.nonlinear:
             if 'nonlinear_terms_knobs' not in gs2_input.keys():
@@ -223,6 +234,7 @@ class GS2(GKCode):
                 gs2_input['nonlinear_terms_knobs']['nonlinear_mode'] = 'off'
             except KeyError:
                 pass
+
 
         gs2_nml = f90nml.Namelist(gs2_input)
         gs2_nml.float_format = pyro.float_format
@@ -245,7 +257,7 @@ class GS2(GKCode):
         gs2['theta_grid_eik_knobs']['bishop'] = 4
         gs2['theta_grid_eik_knobs']['irho'] = 2
         gs2['theta_grid_eik_knobs']['iflux'] = 0
-        pyro_gs2_miller = self.pyro_to_gs2_miller()
+        pyro_gs2_miller = self.pyro_to_code_miller()
 
         miller = pyro.local_geometry
 
@@ -254,6 +266,7 @@ class GS2(GKCode):
 
         miller.delta = np.sin(miller.tri)
         miller.s_kappa = miller.kappri * miller.rho / miller.kappa
+        miller.s_delta = gs2['theta_grid_parameters']['tripri'] * miller.rho
 
         # Get beta normalised to R_major(in case R_geo != R_major)
         beta = gs2['parameters']['beta'] * (miller.Rmaj / miller.Rgeo) ** 2
@@ -274,7 +287,7 @@ class GS2(GKCode):
         Load LocalSpecies object from GS2 file
         """
         nspec = gs2['species_knobs']['nspec']
-        pyro_gs2_species = self.pyro_to_gs2_species()
+        pyro_gs2_species = self.pyro_to_code_species()
 
         # Dictionary of local species parameters
         local_species = LocalSpecies()
@@ -337,7 +350,7 @@ class GS2(GKCode):
         # Add local_species
         pyro.local_species = local_species
 
-    def pyro_to_gs2_miller(self):
+    def pyro_to_code_miller(self):
         """
         Generates dictionary of equivalent pyro and gs2 parameter names
         for miller parameters
@@ -351,7 +364,6 @@ class GS2(GKCode):
             'kappa': ['theta_grid_parameters', 'akappa'],
             'kappri': ['theta_grid_parameters', 'akappri'],
             'tri': ['theta_grid_parameters', 'tri'],
-            's_delta': ['theta_grid_parameters', 'tripri'],
             'shat': ['theta_grid_eik_knobs', 's_hat_input'],
             'shift': ['theta_grid_parameters', 'shift'],
             'beta_prime': ['theta_grid_eik_knobs', 'beta_prime_input'],
@@ -359,7 +371,7 @@ class GS2(GKCode):
 
         return pyro_gs2_param
 
-    def pyro_to_gs2_species(self):
+    def pyro_to_code_species(self):
         """
         Generates dictionary of equivalent pyro and gs2 parameter names
         for miller parameters
@@ -397,6 +409,15 @@ class GS2(GKCode):
         grid_type = gs2['kt_grids_knobs']['grid_option']
         numerics = Numerics()
 
+        # Set no. of fields
+        numerics.phi = gs2["knobs"].get("fphi", 0.0) > 0.0
+        numerics.apar = gs2["knobs"].get("fapar", 0.0) > 0.0
+        numerics.bpar = gs2["knobs"].get("fbpar", 0.0) > 0.0
+
+        # Set time stepping
+        numerics.delta_time = gs2['knobs'].get("delt", 0.005) / sqrt2
+        numerics.max_time = gs2['knobs'].get("nstep", 50000) * numerics.delta_time
+
         # Need shear for map theta0 to kx
         shat = pyro.local_geometry.shat
 
@@ -421,7 +442,7 @@ class GS2(GKCode):
 
             # Set up ky grid
             if 'ny' in keys:
-                numerics.nky = int((gs2[box]['n0'] - 1) / 3 + 1)
+                numerics.nky = int((gs2[box]['ny'] - 1) / 3 + 1)
             elif 'n0' in keys:
                 numerics.nky = gs2[box]['n0']
             elif 'nky' in keys:
@@ -460,7 +481,7 @@ class GS2(GKCode):
             numerics.nenergy = gs2['le_grids_knobs']['negrid']
 
         # Currently using number of un-trapped pitch angles
-        numerics.npitch = gs2['le_grids_knobs']['ngauss']
+        numerics.npitch = gs2['le_grids_knobs']['ngauss'] * 2
 
         try:
             nl_mode = gs2['nonlinear_terms_knobs']['nonlinear_mode']
@@ -518,15 +539,21 @@ class GS2(GKCode):
         gk_output.ky = ky
         gk_output.nky = len(ky)
 
-        if pyro.gs2_input['knobs']['wstar_units']:
-            time = netcdf_data['t'][:] / ky
-        else:
-            time = netcdf_data['t'][:] * sqrt2
+        try:
+            if pyro.gs2_input['knobs']['wstar_units']:
+                time = netcdf_data['t'][:] / ky
+            else:
+                time = netcdf_data['t'][:] / sqrt2
+        
+        except KeyError:
+            time = netcdf_data['t'][:] / sqrt2
 
         gk_output.time = time
         gk_output.ntime = len(time)
 
-        kx = netcdf_data['kx'][:] / sqrt2
+        # Shift kx=0 to middle of array
+        kx = np.fft.fftshift(netcdf_data['kx'][:]) / sqrt2
+
         gk_output.kx = kx
         gk_output.nkx = len(kx)
 
@@ -582,6 +609,7 @@ class GS2(GKCode):
     def load_fields(self, pyro):
         """
         Loads 3D fields into GKOutput.data DataSet
+        pyro.gk_output.data['fields'] = fields(field, theta, kx, ky, time)
         """
 
         import netCDF4 as nc
@@ -609,11 +637,15 @@ class GS2(GKCode):
 
             fields[ifield, :, :, :, :] = field_data[0, :, :, :, :] + 1j * field_data[1, :, :, :, :]
 
+        # Shift kx=0 to middle of axis
+        fields = np.fft.fftshift(fields, axes=1)
+
         data['fields'] = (('field', 'kx', 'theta', 'ky', 'time'), fields)
 
     def load_fluxes(self, pyro):
         """
         Loads fluxes into GKOutput.data DataSet
+        pyro.gk_output.data['fluxes'] = fluxes(species, moment, field, ky, time)
         """
 
         import netCDF4 as nc
