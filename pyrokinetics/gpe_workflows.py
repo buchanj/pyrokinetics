@@ -2,6 +2,20 @@ from pyrokinetics import Pyro, PyroScan, PyroScan_LHD, PyroScan_MICE, PyroGPE
 import os
 import numpy as np
 import argparse
+from datetime import datetime
+
+def print_time(message=""):
+    """
+    Used to time various processes. Prints the message and
+    then the current time.
+    """
+
+    now = datetime.now()
+    current_time = now.strftime("%H.%M:%S")
+
+    print(message)
+    print('Current time is '+ current_time)
+    print()
 
 def load_validation_lhd(gs2_template, param_dict, directory):
     """
@@ -114,7 +128,8 @@ def run_lhd_gpe_workflow(gs2_template, param_dict, npoints, directory, image_nam
 def run_mice_workflow(gs2_template, param_dict, directory, image_name='gs2_local',
                       max_containers=124, n_init=124, n_cand=50, n_batch=20, 
                       n_iterations=10, validation_lhd=None, test_mode=False,
-                      cores_per_run_lhd=1, cores_per_run_mice=1):
+                      cores_per_run_lhd=1, cores_per_run_mice=1,
+                      convergence_loocv=None, convergence_lhd=None):
 
     """
     Submits a MICE workflow
@@ -153,14 +168,17 @@ def run_mice_workflow(gs2_template, param_dict, directory, image_name='gs2_local
 
     # Generate and run initial LHD 
     # This also updates the MICE design with the resulting targets
+    print_time(message="Submitting initial LHD")
     pyro_scan.submit_inital_design(max_containers=max_containers, n_init=n_init, n_cand=n_cand)
 
     # Train initial GPE based on MICE parameters and targets
+    print_time(message="Training initial GPE")
     pyro_gpe = PyroGPE()
     pyro_gpe.load_training_data_from_mice(pyro_scan)
     pyro_gpe.train(kernel='Matern52',nugget=1.0e-8)
 
     # Perform validation using initial LHD
+    print_time(message="Performing LOOCV using initial LHD")
     freq_rms_error, gamma_rms_error, freq_zs, gamma_zs = pyro_gpe.leave_one_out_cross_validate()
 
     filename = directory + os.sep + 'loocv.csv'
@@ -169,6 +187,7 @@ def run_mice_workflow(gs2_template, param_dict, directory, image_name='gs2_local
     # Perform validation against LHD
     if validation_lhd is not None:
 
+        print_time(message="Performing validation against existing LHD")
         freq_rms_error, gamma_rms_error, freq_zs, gamma_zs = pyro_gpe.validate_from_lhd(validation_lhd)
 
         filename = directory + os.step + 'validation.csv'
@@ -180,30 +199,44 @@ def run_mice_workflow(gs2_template, param_dict, directory, image_name='gs2_local
     pyro_scan.cores_per_run = cores_per_run_mice
 
     iteration = 1
+    break_on_complete = False
     while iteration <= n_iterations:
 
         # Submit a batch 
+        print_time(message="Submitting MICE batch "+str(iteration))
         pyro_scan.submit_mice_batch(iteration, n_batch=n_batch, max_containers=max_containers)
 
         # Train a new GPE using updated data
+        print_time(message="Training GPE")
         pyro_gpe.load_training_data_from_mice(pyro_scan)
         pyro_gpe.train(kernel='Matern52',nugget=1.0e-8)
 
-        # Perform validation using initial LHD
+        # Perform Leave One Out Cross Validation
+        print_time(message="Performing LOOCV")
         freq_rms_error, gamma_rms_error, freq_zs, gamma_zs = pyro_gpe.leave_one_out_cross_validate()
 
         filename = directory + os.sep + 'loocv.csv'
         pyro_gpe.write_validation_data( iteration, filename, freq_rms_error, gamma_rms_error )
 
+        if( convergence_loocv is not None and gamma_rms_error < convergence_loocv ):
+            break_on_complete = True
+
         # Perform validation against LHD
         if validation_lhd is not None:
 
+            print_time(message="Performing validation against existing LHD")
             freq_rms_error, gamma_rms_error, freq_zs, gamma_zs = pyro_gpe.validate_from_lhd(validation_lhd)
 
             filename = directory + os.step + 'validation.csv'
             pyro_gpe.write_validation_data( iteration, filename, freq_rms_error, gamma_rms_error )
 
-        iteration = iteration + 1
+            if( convergence_lhd is not None and gamma_rms_error < convergence_lhd ):
+                break_on_complete = True
+
+        if break_on_complete:
+            break
+        else:
+            iteration = iteration + 1
 
     return pyro_scan, pyro_gpe
 
