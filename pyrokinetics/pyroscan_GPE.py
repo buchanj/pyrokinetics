@@ -234,7 +234,7 @@ class PyroScan_GPE(PyroScan):
             self.current_pyro_objects.append(pyro)
             self.all_pyro_objects.append(pyro)
 
-    def get_parameters_and_targets(self, pyro_objects):
+    def get_parameters_and_targets(self, pyro_objects, time_range=0.8):
         """
         Returns an array of the varied input parameter and output values (frequency and growth rate)
         for the stored pyro objects contained in pyro_objects.
@@ -270,12 +270,12 @@ class PyroScan_GPE(PyroScan):
                 
                 frequency   = output_data['mode_frequency']
                 growth_rate = output_data['growth_rate']
-                
-                # FIXME - probably want some final time averaging here!
-                # Create a separate function for extracting frequency and growth rate.
+
                 outputs_ = []
-                outputs_.append( np.real( frequency.isel(  time=-1).data[0] ) )
-                outputs_.append( np.real( growth_rate.isel(time=-1).data[0] ) )
+                final_time = growth_rate['time'].isel(time=-1)
+
+                outputs_.append( np.mean(   frequency.where(   frequency.time > time_range * final_time ) ) )
+                outputs_.append( np.mean( growth_rate.where( growth_rate.time > time_range * final_time ) ) )
 
             else:
                 outputs_ = [ 0.0, 1.0 ]
