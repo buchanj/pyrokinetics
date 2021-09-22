@@ -13,6 +13,14 @@ class PyroScan_GPE(PyroScan):
     A PyroScan derived class for creating and running 
     GPE design cases (LHDs and sequential design studies).
 
+    Settings
+    directory            : The top level run directory
+    image_name           : The docker image name of the container to run
+    template_file        : The name of a GS2 input file to use as a template
+    test_mode            : If test_mode is true then the code does not submit docker containers
+                           and returns growth_rate=0 and frequency=1 for all shots. 
+    file_name            : The name to use when writing out gs2 input files in the iteration folders. 
+
     Member data
     cores_per_run        : How many cores each gs2 run will use
     current_pyro_objects : Pyro objects read from current batch of runs
@@ -115,9 +123,12 @@ class PyroScan_GPE(PyroScan):
 
         scaled_parameters = []
 
+        # Loop over different runs
         for run in range( parameters.shape[0] ):
 
             params = []
+            
+            # Loop over parameters for each run
             for param, vdict in self.gpe_param_dict.items():
 
                 # Get index for this parameter
@@ -135,6 +146,7 @@ class PyroScan_GPE(PyroScan):
 
         return np.array(scaled_parameters)
 
+    # Takes unscaled parameters as input
     def write_batch(self, parameters, directory='.'):
         """
         Creates and writes GK input files for a set of parameters (numpy array).
@@ -162,7 +174,8 @@ class PyroScan_GPE(PyroScan):
 
             # Create file name for each run
             run_directory = directory + os.sep + 'iteration_'+str(run) + os.sep
-
+            
+            # Update parameter dictionary foor this run
             for param, vdict in self.gpe_param_dict.items():
 
                 # Get index for this parameter
@@ -198,6 +211,11 @@ class PyroScan_GPE(PyroScan):
         Appends data from completed runs stored in <directory>
         into a set of pyro objects. nruns is the number of 
         runs to read.
+        
+        Data from the current batch of runs is stored in 
+        self.current_pyro_objects whilst also being appended
+        to any existing data in self.all_pyro_objects.
+
         """
 
         if wait and not self.test_mode:

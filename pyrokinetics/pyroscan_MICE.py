@@ -5,12 +5,13 @@ import os
 import numpy as np
 import mogp_emulator as mogp
 
-# FIXME - make scaling optional? FIXME - Make sure scaling is handled consistently. 
-# Or train a GPE at the end using the unscaled data???
-# Basically got as far as writing submission functions for initial LHD and MICE batches
-# Need to recover data and handle updating the MICE design.
-# Then need some kind of stopping criterion. 
-# May want option to test against data between updates and output convergence. 
+# The MICE design and the initial LHD are defined on [0:1] for each variable
+# The write_batch function in pyroscan_GPE handles scaling these correctly.
+# Training only requires knowledge of the targets which have no scalings so this is fine.
+
+# When a 'final' GPE is trained it should use the all_pyro_objects member data as this will
+# contain the correct input and target data for all values rather than the inputs on [0:1]
+# This GPE can then be used for comparison with LHD data etc.
     
 class PyroScan_MICE(PyroScan_GPE):
     """
@@ -28,15 +29,20 @@ class PyroScan_MICE(PyroScan_GPE):
     def create_design(self, n_init=124, n_cand=50):
         """
         Creates the MICE design object and writes an initial Latin Hypercube Design.
+        Does not submit it - this is done by submit_initial_design.
         """
 
         print(f'Creating an initial Latin Hypercube run with {n_init} points')
         self.latin_hypercube_n = n_init
 
+        # The LHD and consequently the MICE design is defined over [0:1]
+        # for each dimension.
+
         # Generate a Latin Hypercube
         self.lhd = mogp.LatinHypercubeDesign( len(self.param_dict) )
 
-        # Initialise MICE sequential design
+        # Initialise MICE sequential design with n_init initial points and n_cand candidate
+        # points for each new batch.
         self.mice_design = mogp.MICEDesign( self.lhd, n_init=n_init, n_cand=n_cand )
 
         # Initial Design

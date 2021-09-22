@@ -111,9 +111,6 @@ def run_lhd_gpe_workflow(gs2_template, param_dict, npoints, directory, image_nam
 
     return pyro_gpe
 
-# FIXME - Add a convergence termination criterion
-# FIXME - What to do about theta values.    
-
 def run_mice_workflow(gs2_template, param_dict, directory, image_name='gs2_local',
                       max_containers=124, n_init=124, n_cand=50, n_batch=20, 
                       n_iterations=10, validation_lhd=None, test_mode=False,
@@ -158,7 +155,7 @@ def run_mice_workflow(gs2_template, param_dict, directory, image_name='gs2_local
     # This also updates the MICE design with the resulting targets
     pyro_scan.submit_inital_design(max_containers=max_containers, n_init=n_init, n_cand=n_cand)
 
-    # Train initial GPE based on MICE inputs and targets
+    # Train initial GPE based on MICE parameters and targets
     pyro_gpe = PyroGPE()
     pyro_gpe.load_training_data_from_mice(pyro_scan)
     pyro_gpe.train(kernel='Matern52',nugget=1.0e-8)

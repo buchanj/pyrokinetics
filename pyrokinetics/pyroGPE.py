@@ -152,6 +152,7 @@ class PyroGPE:
         Loads data from a pyroscan_MICE object.
         """
 
+        # Use correct 'scaled' values stored in parameters rather than [0:1] values.
         self.parameter_names   = mice_design.parameter_names
         self.parameter_values  = mice_design.parameters
         

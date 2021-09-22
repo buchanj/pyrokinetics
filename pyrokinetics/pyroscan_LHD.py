@@ -17,6 +17,7 @@ class PyroScan_LHD(PyroScan_GPE):
     image             : Name of the docker image to be run                         [run]
     """
 
+    # LHD specific wrapper to pyroscan_GPE.write_batch
     def write(self, npoints=100):
         """
         Creates and writes GK input files for parameters in a maximin Latin Hypercube of size npoints
