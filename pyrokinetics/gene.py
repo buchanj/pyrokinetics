@@ -271,8 +271,6 @@ class GENE(GKCode):
 
         nu_ei = gene['general']['coll']
 
-        pressure = 0.0
-        a_lp = 0.0
         # Load each species into a dictionary
         for i_sp in range(nspec):
 
@@ -302,11 +300,7 @@ class GENE(GKCode):
             species_data.name = name
 
             # Add individual species data to dictionary of species
-            local_species[name] = species_data
-            local_species.names.append(name)
-
-        pressure = 0.0
-        a_lp = 0.0
+            local_species.add_species(name=name, species_data=species_data)
 
         # Normalise to pyrokinetics normalisations and calculate total pressure gradient
         for name in local_species.names:
@@ -314,11 +308,6 @@ class GENE(GKCode):
 
             species_data.temp = species_data.temp / te
             species_data.dens = species_data.dens / ne
-            pressure += species_data.temp * species_data.dens
-            a_lp += species_data.temp * species_data.dens * (species_data.a_lt + species_data.a_ln)
-
-        local_species.pressure = pressure
-        local_species.a_lp = a_lp
 
         # Add local_species
         pyro.local_species = local_species
@@ -393,7 +382,6 @@ class GENE(GKCode):
         numerics.max_time = gene["general"].get("simtimelim", 500.0)
 
         numerics.nky = gene['box']['nky0']
-        numerics.nkx = gene['box']['nx0']
         numerics.ky = gene['box']['kymin']
 
         try:
@@ -425,8 +413,12 @@ class GENE(GKCode):
 
         if nl_mode == 1:
             numerics.nonlinear = True
+            numerics.nkx = gene['box']['nx0']
+            numerics.nperiod = 1
         else:
             numerics.nonlinear = False
+            numerics.nkx = 1
+            numerics.nperiod = gene['box']['nx0'] - 1
 
         pyro.numerics = numerics
 
@@ -460,7 +452,8 @@ class GENE(GKCode):
         gk_output = pyro.gk_output
         numerics = pyro.numerics
 
-        nml = f90nml.read(f'parameters_{pyro.gene_output_number}')
+        parameters_file = os.path.join(f'{pyro.run_directory}', f'parameters_{pyro.gene_output_number}')
+        nml = f90nml.read(parameters_file)
 
         ntime = nml['info']['steps'][0] // nml['in_out']['istep_field'] + 1
         delta_t = nml['info']['step_time'][0]
@@ -565,7 +558,6 @@ class GENE(GKCode):
         complex_size = 16
 
         nx = pyro.gene_input['box']['nx0']
-        nconn = nx - 1
         nz = pyro.gene_input['box']['nz0']
 
         field_size = nx * nz * gk_output.nky * complex_size
@@ -598,14 +590,14 @@ class GENE(GKCode):
                     dummy = struct.unpack('i', file.read(int_size))
 
             if pyro.numerics.nonlinear:
-                field_data = np.reshape(sliced_field, (gk_output.nfield, gk_output.nkx, gk_output.ntheta, gk_output.nky,
+                fields = np.reshape(sliced_field, (gk_output.nfield, gk_output.nkx, gk_output.ntheta, gk_output.nky,
                                                        gk_output.ntime), 'F')
 
             # Convert from kx to ballooning space
             else:
                 i_ball = 0
 
-                for i_conn in range(-int(nconn / 2), int(nconn / 2)+1):
+                for i_conn in range(-int(nx / 2) + 1, int((nx-1) / 2) + 1):
                     fields[:, 0, :, i_ball:i_ball+nz, :] = sliced_field[:, i_conn, :, :, :] * (-1)**i_conn
                     i_ball += nz
 
@@ -631,9 +623,11 @@ class GENE(GKCode):
         run_directory = pyro.run_directory
         flux_file = os.path.join(run_directory, f'nrg_{pyro.gene_output_number}')
 
-        fluxes = np.empty((gk_output.nspecies, 3, 2, gk_output.ntime))
+        fluxes = np.empty((gk_output.nspecies, 3, gk_output.nfield, gk_output.ntime))
 
-        nml = f90nml.read(f'parameters_{pyro.gene_output_number}')
+        parameters_file = os.path.join(f'{pyro.run_directory}', f'parameters_{pyro.gene_output_number}')
+        nml = f90nml.read(parameters_file)
+
         flux_istep = nml['in_out']['istep_nrg']
         field_istep = nml['in_out']['istep_field']
 
@@ -647,6 +641,13 @@ class GENE(GKCode):
             csv_file = open(flux_file)
             nrg_data = csv.reader(csv_file, delimiter=' ', skipinitialspace=True)
 
+            if gk_output.nfield == 3:
+                print('Warning GENE combines Apar and Bpar fluxes')
+                fluxes[:, :, 2, :] = 0.0
+                field_size = 2
+            else:
+                field_size = gk_output.nfield
+
             for i_time in range(gk_output.ntime):
 
                 time = next(nrg_data)
@@ -655,13 +656,13 @@ class GENE(GKCode):
                     nrg_line = np.array(next(nrg_data), dtype=np.float)
 
                     # Particle
-                    fluxes[i_species, 0, :, i_time] = nrg_line[4:6]
+                    fluxes[i_species, 0, :field_size, i_time] = nrg_line[4:4+field_size]
 
                     # Energy
-                    fluxes[i_species, 1, :, i_time] = nrg_line[6:8]
+                    fluxes[i_species, 1, :field_size, i_time] = nrg_line[6:6+field_size]
 
                     # Momentum
-                    fluxes[i_species, 2, :, i_time] = nrg_line[8:]
+                    fluxes[i_species, 2, :field_size, i_time] = nrg_line[8:8+field_size]
 
                 # Skip time/data values in field print out is less
                 if i_time != gk_output.ntime - 1:

@@ -39,8 +39,9 @@ class Pyro:
         self.gk_code = self.gk_type
         self.gk_output = GKOutput()
 
-        self.file_name = self.gk_file
-        self.run_directory = '.'
+        if self.gk_file is not None:
+            self.file_name = Path(self.gk_file).basename()
+            self.run_directory = Path(self.gk_file).dirname()
 
         self.local_geometry_type = local_geometry
         self.local_geometry = self.local_geometry_type
@@ -129,6 +130,7 @@ class Pyro:
     def load_global_eq(self,
                        eq_file=None,
                        eq_type=None,
+                       **kwargs
                        ):
         """
         Loads in global equilibrium parameters
@@ -144,7 +146,7 @@ class Pyro:
         if self.eq_type is None or self.eq_file is None:
             raise ValueError('Please specify eq_type and eq_file')
         else:
-            self.eq = Equilibrium(self.eq_file, self.eq_type)
+            self.eq = Equilibrium(self.eq_file, self.eq_type, **kwargs)
 
     def load_global_kinetics(self,
                              kinetics_file=None,
@@ -245,6 +247,7 @@ class Pyro:
 
     def load_local_geometry(self,
                             psi_n=None,
+                            **kwargs
                             ):
         """ 
         Loads local geometry parameters
@@ -261,7 +264,7 @@ class Pyro:
             raise ValueError('Please specify local geometry type')
 
         # Load local geometry
-        self.local_geometry.load_from_eq(self.eq, psi_n=psi_n)
+        self.local_geometry.load_from_eq(self.eq, psi_n=psi_n, **kwargs)
 
     def load_local(self,
                    psi_n=None,
@@ -332,3 +335,18 @@ class Pyro:
         
         self._float_format = value
 
+    def __deepcopy__(self, memodict={}):
+        """
+        Allows for deepcopy of a Pyro object
+
+        Returns
+        -------
+        Copy of pyro object
+        """
+
+        new_pyro = Pyro()
+
+        for key, value in self.__dict__.items():
+            setattr(new_pyro, key, value)
+
+        return new_pyro
