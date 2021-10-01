@@ -28,6 +28,7 @@ class Pyro:
             local_geometry=None,
             linear=True,
             local=True,
+            psi_n_lcfs=1.0
             ):
 
         self._float_format = ''
@@ -54,7 +55,7 @@ class Pyro:
 
         # Load equilibrium file if it exists
         if self.eq_file is not None:
-            self.load_global_eq()
+            self.load_global_eq(psi_n_lcfs=psi_n_lcfs)
             
         # Load kinetics file if it exists
         if self.kinetics_file is not None:
