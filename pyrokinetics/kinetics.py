@@ -383,8 +383,8 @@ def get_impurity_mass(Z=None):
         
     """
 
-    Zlist = [2, 6, 8, 10, 18, 54, 74]
-    Mlist = [4, 12, 16, 20, 40, 132, 184]
+    Zlist = [2, 6, 8, 10, 18, 53, 54, 74]
+    Mlist = [4, 12, 16, 20, 40, 127, 132, 184]
 
     M = Mlist[Zlist.index(Z)]
 
@@ -396,7 +396,7 @@ def get_impurity_charge(M=None):
 
     """
 
-    Zlist = [2, 6, 8, 10, 18, 54, 74]
-    Mlist = [4, 12, 16, 20, 40, 132, 184]
+    Zlist = [2, 6, 8, 10, 18, 53, 54, 74]
+    Mlist = [4, 12, 16, 20, 40, 127, 132, 184]
 
     Z = Zlist[Mlist.index(M)]
