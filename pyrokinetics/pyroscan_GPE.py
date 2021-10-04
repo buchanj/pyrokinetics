@@ -4,6 +4,7 @@ import os
 import numpy as np
 from .docker import *
 from .gpe_csv import *
+import netCDF4 as nc
 
 # A derived pyroscan class for handling latin hypercube and sequential
 # design studies. These each have their own class derived from this.
@@ -86,11 +87,12 @@ class PyroScan_GPE(PyroScan):
         # Load default parameter keys
         self.load_default_parameter_keys()
 
-    def get_parameter_and_target_names():
-        """
-        Returns parameter and target names.
-        """
-        return self.parameter_names, self.target_names
+        # Numerical constants used in processing ================
+        
+        # Lower bound ov
+        self.final_averaging_window = 0.8
+
+    # PRIVATE MEMBER FUNCTIONS ==================================
 
     def get_parameter_ranges(self):
         """
@@ -146,6 +148,108 @@ class PyroScan_GPE(PyroScan):
 
         return np.array(scaled_parameters)
 
+    def get_iteration_count(self,directory):
+        """
+        Counts the number of iterations in a directory. The iteration directories are
+        assumed to have a name of the form iteration_x where x is an integer. 
+        This is needed when collating results.
+        """
+
+        nruns = 0
+        for root, dirs, files in os.walk(directory, topdown=False):
+            subdirs = [ x for x in dirs if 'iteration_' in x ]
+            nruns += len(subdirs)
+
+        return nruns 
+
+    def check_tearing_and_magnitudes(netcdf, min_ctear=0.01, min_ratio=0.2):
+        """
+        Checks whether the mode is tearing parity by evaluating
+        mod( Integral( Apar dtheta ) ) / Integral( mod( Apar dtheta ) )
+        
+        Also checks whether the parallel vector potential is large compared
+        with the scalar potential.
+        """
+        
+        # Read dataset
+        data = nc.Dataset(netcdf)
+    
+        thetab  = data['theta'][:]
+        apar    = data['apar'][0, 0, :, 0] + 1j*data['apar'][0, 0, :, 1]
+        gradpar = data['gradpar'][:]
+
+        int_factor = apar / (gradpar)
+
+        int_apar     = np.abs(np.trapz(int_factor, thetab))
+        int_mod_apar = np.trapz(np.abs(int_factor), thetab)
+
+        ctear = int_apar/int_mod_apar
+        print('Tearing factor = ', ctear)
+
+        if ctear < min_ctear:
+            print('Mode is not microtearing')
+            return False
+
+        # Compare with scalar potential
+
+        phi = data['phi'][0, 0, :, 0] + 1j*data['phi'][0, 0, :, 1]
+        int_factor = phi / gradpar
+        
+        int_mod_phi = np.trapz(np.abs(int_factor), thetab)
+        
+        if int_mod_apar < int_mod_phi * min_ratio:
+            print( 'Apar is too small relative to Phi.' )
+            return False
+
+    def get_expected_mtm_frequency(self,pyro):
+        """
+        Calculates the expected frequency of the MTM.
+        """
+
+        # Calculate expected frequency from inputs
+        ky = pyro.gs2_input['kt_grids_single_parameters']['aky']
+
+        t_prime = pyro.gs2_input['species_parameters_1']['tprim']
+        n_prime = pyro.gs2_input['species_parameters_1']['fprim']
+
+        freq_exp = ( ky / 2.0 ) * ( t_prime + n_prime )
+
+        # Get output frequency
+        output_data = pyro.gk_output.data
+                
+        frequency  = output_data['mode_frequency']
+        final_time = growth_rate['time'].isel(time=-1)
+        freq_calc  = np.mean( frequency.where(   frequency.time > time_range * final_time ) )
+        
+
+    def check_is_mtm(self,pyro,netcdf):
+        """
+        Checks that a run has found a microtearing mode rather than
+        a kinetic ballooning mode (or other).
+        """
+
+        # Check frequency is negative
+        pyro_objects = [pyro]
+        parameters, targets = self.get_parameters_and_targets(pyro_objects)
+        
+        frequency = targets[0][0]
+        if frequency > 0:
+            print('Frequency of mode is positive => Not MTM')
+            return False
+
+        # Check mode is tearing 
+        tearing = self.check_tearing(netcdf)
+        if not tearing:
+            print('Mode is not microtearing')
+            return False
+        
+    def check_tolerance():
+        """
+        Checks that the run has converged sufficiently." 
+        """
+
+    # PUBLIC MEMBER FUNCTIONS ===================================    
+
     # Takes unscaled parameters as input
     def write_batch(self, parameters, directory='.'):
         """
@@ -192,19 +296,16 @@ class PyroScan_GPE(PyroScan):
 
             self.pyro.write_gk_file(self.file_name, directory=run_directory, template_file=self.template_file)
 
-    def get_iteration_count(self,directory):
-        """
-        Counts the number of iterations in a directory. The iteration directories are
-        assumed to have a name of the form iteration_x where x is an integer. 
-        This is needed when collating results.
+    def run(self,directory,nruns,max_containers):
+        """ 
+        Submits a set of containerised GS2 runs prepared in <directory>.
         """
 
-        nruns = 0
-        for root, dirs, files in os.walk(directory, topdown=False):
-            subdirs = [ x for x in dirs if 'iteration_' in x ]
-            nruns += len(subdirs)
+        if self.test_mode:
+            return
 
-        return nruns
+        # Submit container when cores are available
+        run_docker_local(directory,self.file_name,nruns,self.cores_per_run,self.image_name,max_containers)
 
     def collate_results(self, directory, wait=True):
         """
@@ -251,6 +352,12 @@ class PyroScan_GPE(PyroScan):
             # Add this pyro object to lists
             self.current_pyro_objects.append(pyro)
             self.all_pyro_objects.append(pyro)
+
+    def get_parameter_and_target_names():
+        """
+        Returns parameter and target names.
+        """
+        return self.parameter_names, self.target_names
 
     def get_parameters_and_targets(self, pyro_objects, time_range=0.8):
         """
@@ -318,14 +425,3 @@ class PyroScan_GPE(PyroScan):
 
         # Write the data file
         create_csv(directory, filename, self.parameter_names, parameters, self.target_names, targets)
-
-    def run(self,directory,nruns,max_containers):
-        """ 
-        Submits a set of containerised GS2 runs prepared in <directory>.
-        """
-
-        if self.test_mode:
-            return
-
-        # Submit container when cores are available
-        run_docker_local(directory,self.file_name,nruns,self.cores_per_run,self.image_name,max_containers)
