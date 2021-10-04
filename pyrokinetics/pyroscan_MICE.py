@@ -26,6 +26,34 @@ class PyroScan_MICE(PyroScan_GPE):
 
     """
 
+    # PRIVATE MEMBER FUNCTIONS ==================================
+
+    def check_settings(self,batch_number):
+        """
+        Checks data needed for submission and post-processing steps is available.
+        """
+
+        # Check batch size is set 
+        if batch_number > 0:
+            if self.n_batch is None:
+                raise Exception('No batch size information available. Aborting.')
+        else:
+            # Check LHD size is set
+            if self.latin_hypercube_n is None:
+                raise Exception('No LHD information available. Aborting.')
+
+    def get_batch_size(self,batch_number):
+        """
+        Just returns the size of the batch.
+        """
+        
+        if batch_number == 0:
+            return self.latin_hypercube_n
+        else:
+            return self.n_batch
+
+    # PUBLIC MEMBER FUNCTIONS ===================================    
+
     def create_design(self, n_init=124, n_cand=50):
         """
         Creates the MICE design object and writes an initial Latin Hypercube Design.
@@ -67,33 +95,10 @@ class PyroScan_MICE(PyroScan_GPE):
         run_directory = self.directory + os.sep + 'batch_' + str(batch_number)
         super().write_batch(batch, directory=run_directory)
 
-    def check_settings(self,batch_number):
-        """
-        Checks data needed for submission and post-processing steps is available.
-        """
-
-        # Check batch size is set 
-        if batch_number > 0:
-            if self.n_batch is None:
-                raise Exception('No batch size information available. Aborting.')
-        else:
-            # Check LHD size is set
-            if self.latin_hypercube_n is None:
-                raise Exception('No LHD information available. Aborting.')
-
-    def get_batch_size(self,batch_number):
-        """
-        Just returns the size of the batch.
-        """
-        
-        if batch_number == 0:
-            return self.latin_hypercube_n
-        else:
-            return self.n_batch
-
     def run_batch(self, batch_number, max_containers=124 ):
         """
-        Runs the current batch of jobs.
+        Runs the current batch of jobs. Note this works for the initial
+        design with batch_number = 0.
         """
 
         self.check_settings(batch_number)
@@ -161,6 +166,8 @@ class PyroScan_MICE(PyroScan_GPE):
 
         # Load existing data
         self.mice_design.load_design(filename)
+
+    # Functions which condense the above into workflows ====================
 
     def submit_inital_design(self,max_containers=124, n_init=124, n_cand=50):
         """

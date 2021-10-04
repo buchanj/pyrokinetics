@@ -17,6 +17,19 @@ class PyroScan_LHD(PyroScan_GPE):
     image             : Name of the docker image to be run                         [run]
     """
 
+    # PRIVATE MEMBER FUNCTIONS ==================================
+
+    def check_settings(self):
+        """
+        Checks data needed for post-processing steps is available.
+        """
+
+        # Check LHD size is set
+        if self.latin_hypercube_n is None:
+            raise Exception('No LHD information available. Aborting.')
+
+    # PUBLIC MEMBER FUNCTIONS ===================================  
+
     # LHD specific wrapper to pyroscan_GPE.write_batch
     def write(self, npoints=100):
         """
@@ -32,15 +45,6 @@ class PyroScan_LHD(PyroScan_GPE):
         lhd = lhs(len(self.param_dict), self.latin_hypercube_n, 'maximin')
 
         super().write_batch(lhd, directory=self.directory)
-
-    def check_settings(self):
-        """
-        Checks data needed for post-processing steps is available.
-        """
-
-        # Check LHD size is set
-        if self.latin_hypercube_n is None:
-            raise Exception('No LHD information available. Aborting.')
 
     def run(self,max_containers=124):
         """
