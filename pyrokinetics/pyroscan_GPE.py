@@ -89,8 +89,18 @@ class PyroScan_GPE(PyroScan):
 
         # Numerical constants used in processing ================
         
-        # Lower bound ov
-        self.final_averaging_window = 0.8
+        # Specifies lower fractional bound of averaging time window at
+        # the end of a run
+        self.averaging_window_min = 0.8
+
+        # Frequency window when determining if mode is MTM
+        self.frequency_window = 0.3
+
+        # Minimum tearing parity
+        self.min_ctear=0.01
+
+        # Minimum ratio of Apar to Phi
+        self.min_ratio=0.2
 
     # PRIVATE MEMBER FUNCTIONS ==================================
 
@@ -162,7 +172,7 @@ class PyroScan_GPE(PyroScan):
 
         return nruns 
 
-    def check_tearing_and_magnitudes(netcdf, min_ctear=0.01, min_ratio=0.2):
+    def check_tearing_and_magnitudes(self,pyro):
         """
         Checks whether the mode is tearing parity by evaluating
         mod( Integral( Apar dtheta ) ) / Integral( mod( Apar dtheta ) )
@@ -172,7 +182,8 @@ class PyroScan_GPE(PyroScan):
         """
         
         # Read dataset
-        data = nc.Dataset(netcdf)
+        netcdf_file_name = Path(pyro.file_name).with_suffix('.out.nc')
+        data = nc.Dataset(netcdf_file_name)
     
         thetab  = data['theta'][:]
         apar    = data['apar'][0, 0, :, 0] + 1j*data['apar'][0, 0, :, 1]
@@ -183,28 +194,37 @@ class PyroScan_GPE(PyroScan):
         int_apar     = np.abs(np.trapz(int_factor, thetab))
         int_mod_apar = np.trapz(np.abs(int_factor), thetab)
 
-        ctear = int_apar/int_mod_apar
+        ctear = int_apar / int_mod_apar
         print('Tearing factor = ', ctear)
 
-        if ctear < min_ctear:
+        if ctear < self.min_ctear:
             print('Mode is not microtearing')
             return False
 
         # Compare with scalar potential
-
         phi = data['phi'][0, 0, :, 0] + 1j*data['phi'][0, 0, :, 1]
         int_factor = phi / gradpar
         
         int_mod_phi = np.trapz(np.abs(int_factor), thetab)
         
-        if int_mod_apar < int_mod_phi * min_ratio:
+        if int_mod_apar < int_mod_phi * self.min_ratio:
             print( 'Apar is too small relative to Phi.' )
             return False
 
-    def get_expected_mtm_frequency(self,pyro):
+    def check_expected_mtm_frequency(self,pyro):
         """
         Calculates the expected frequency of the MTM.
         """
+
+        # Get calculated mode frequency 
+        pyro_objects = [pyro]
+        parameters, targets = self.get_parameters_and_targets(pyro_objects)
+        freq_calc = targets[0][0]
+
+        # Check frequency is negative
+        if frequency > 0:
+            print('Frequency of mode is positive => Not MTM')
+            return False
 
         # Calculate expected frequency from inputs
         ky = pyro.gs2_input['kt_grids_single_parameters']['aky']
@@ -214,39 +234,39 @@ class PyroScan_GPE(PyroScan):
 
         freq_exp = ( ky / 2.0 ) * ( t_prime + n_prime )
 
-        # Get output frequency
-        output_data = pyro.gk_output.data
-                
-        frequency  = output_data['mode_frequency']
-        final_time = growth_rate['time'].isel(time=-1)
-        freq_calc  = np.mean( frequency.where(   frequency.time > time_range * final_time ) )
+        # Check calculated frequency is within desired window of expected frequency
+        min_allowed = (1.0 - self.frequency_window) * abs(freq_exp)
+        max_allowed = (1.0 + self.frequency_window) * abs(freq_exp)
         
+        if abs(freq_calc) > max_allowed or abs(freq_calc) < min_allowed:
+            print('Calculated frequency not in allowed range.')
+            return False
+        else:
+            return True
 
-    def check_is_mtm(self,pyro,netcdf):
+    def check_is_mtm(self,pyro):
         """
         Checks that a run has found a microtearing mode rather than
         a kinetic ballooning mode (or other).
         """
 
-        # Check frequency is negative
-        pyro_objects = [pyro]
-        parameters, targets = self.get_parameters_and_targets(pyro_objects)
-        
-        frequency = targets[0][0]
-        if frequency > 0:
-            print('Frequency of mode is positive => Not MTM')
-            return False
+        # Check expected mode frequency
+        check = check_expected_mtm_frequency(pyro)
 
-        # Check mode is tearing 
-        tearing = self.check_tearing(netcdf)
-        if not tearing:
-            print('Mode is not microtearing')
-            return False
+        # Check mode is tearing parity
+        tearing = self.check_tearing(pyro)
         
-    def check_tolerance():
+        return ( check and tearing )
+        
+    def check_tolerance(self,pyro):
         """
-        Checks that the run has converged sufficiently." 
+        Checks that the run has converged sufficiently.
+        Just a wrapper to the gk_code implementation.
         """
+
+        pyro.gk_code.get_growth_rate_tolerance(pyro,time_range=self.averaging_window_min)
+        
+        return float( pyro.gk_output.data['growth_rate_tolerance'] )
 
     # PUBLIC MEMBER FUNCTIONS ===================================    
 
@@ -359,7 +379,7 @@ class PyroScan_GPE(PyroScan):
         """
         return self.parameter_names, self.target_names
 
-    def get_parameters_and_targets(self, pyro_objects, time_range=0.8):
+    def get_parameters_and_targets(self, pyro_objects):
         """
         Returns an array of the varied input parameter and output values (frequency and growth rate)
         for the stored pyro objects contained in pyro_objects.
@@ -399,8 +419,8 @@ class PyroScan_GPE(PyroScan):
                 outputs_ = []
                 final_time = growth_rate['time'].isel(time=-1)
 
-                outputs_.append( np.mean(   frequency.where(   frequency.time > time_range * final_time ) ) )
-                outputs_.append( np.mean( growth_rate.where( growth_rate.time > time_range * final_time ) ) )
+                outputs_.append( np.mean(   frequency.where(   frequency.time > self.averaging_window_min * final_time ) ) )
+                outputs_.append( np.mean( growth_rate.where( growth_rate.time > self.averaging_window_min * final_time ) ) )
 
             else:
                 outputs_ = [ 0.0, 1.0 ]
