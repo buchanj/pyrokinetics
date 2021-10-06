@@ -46,6 +46,8 @@ class Miller(LocalGeometry):
         Safety factor
     shat : Float
         Magnetic shear
+    beta : Float
+        Plasma beta
     beta_prime : Float
         :math:`\\beta' = \\beta * a/L_p`
 
@@ -124,6 +126,8 @@ class Miller(LocalGeometry):
 
         dpressure_drho = eq.p_prime(psi_n) / drho_dpsi
 
+        beta = 8 * pi * 1e-7 * pressure / B0 ** 2
+
         beta_prime = 8 * pi * 1e-7 * dpressure_drho / B0 ** 2
 
         theta = np.arcsin((Z - Z0) / (kappa * r_minor))
@@ -185,6 +189,7 @@ class Miller(LocalGeometry):
 
         self.q = float(q)
         self.shat = shat
+        self.beta = beta
         self.beta_prime = beta_prime
         self.pressure = pressure
         self.dpressure_drho = dpressure_drho
